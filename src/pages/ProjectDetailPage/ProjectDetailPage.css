@@ -1,0 +1,217 @@
+.project-detail-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.back-btn {
+  align-self: flex-start;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.back-btn:hover {
+  color: var(--color-text);
+}
+
+/* Project Info */
+.project-info-card {
+  padding: var(--space-8);
+}
+
+.project-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+}
+
+.project-info-header h2 {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-1);
+}
+
+.project-client-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.project-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+}
+
+.meta-item > svg {
+  flex-shrink: 0;
+}
+
+.meta-item > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-value {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.meta-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* Detail Budget */
+.detail-budget {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.budget-bar-lg {
+  flex: 1;
+  height: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.budget-fill-lg {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.fill-accent { background: var(--color-accent); }
+.fill-warning { background: var(--color-warning); }
+.fill-danger { background: var(--color-danger); }
+
+.budget-pct-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Assignment Section */
+.assignment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+
+.assignment-panel {
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.panel-header h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+}
+
+.panel-search {
+  position: relative;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.panel-search-icon {
+  position: absolute;
+  left: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.panel-search .input {
+  padding-left: 32px;
+  font-size: var(--text-sm);
+}
+
+.team-list,
+.available-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.team-member,
+.available-member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.team-member:hover,
+.available-member:hover {
+  background: var(--color-surface);
+}
+
+.team-member:last-child,
+.available-member:last-child {
+  border-bottom: none;
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+
+.member-avatar-muted {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.member-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.member-name {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.member-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
