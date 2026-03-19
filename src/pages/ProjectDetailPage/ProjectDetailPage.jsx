@@ -12,14 +12,14 @@ import {
 } from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
-import { users, formatDuration } from '../../data/mockData';
+import { formatDuration } from '../../lib/utils';
 import './ProjectDetailPage.css';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getProjectById, assignUser, removeUser } = useProjects();
-  const { user: currentUser } = useAuth();
+  const { profile: currentProfile, companyProfiles } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -38,17 +38,15 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const companyUsers = users.filter((u) => u.company_id === currentUser?.company_id);
-
-  const assignedUsers = companyUsers.filter((u) =>
-    project.assigned_users.includes(u.id)
+  const assignedUsers = companyProfiles.filter((u) =>
+    project.assigned_users?.includes(u.id)
   );
 
-  const availableUsers = companyUsers.filter(
+  const availableUsers = companyProfiles.filter(
     (u) =>
-      !project.assigned_users.includes(u.id) &&
-      (u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      !project.assigned_users?.includes(u.id) &&
+      (u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        u.email?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const budgetPct = project.budgeted_hours
@@ -106,7 +104,7 @@ export default function ProjectDetailPage() {
             <div className="meta-item">
               <CalendarDays size={16} />
               <div>
-                <span className="meta-value">{project.created_at}</span>
+                <span className="meta-value">{new Date(project.created_at).toLocaleDateString()}</span>
                 <span className="meta-label">Created</span>
               </div>
             </div>
@@ -147,9 +145,9 @@ export default function ProjectDetailPage() {
               ) : (
                 assignedUsers.map((u) => (
                   <div key={u.id} className="team-member">
-                    <div className="member-avatar">{u.name.charAt(0)}</div>
+                    <div className="member-avatar">{u.full_name?.charAt(0) || 'U'}</div>
                     <div className="member-info">
-                      <span className="member-name">{u.name}</span>
+                      <span className="member-name">{u.full_name}</span>
                       <span className="member-email">{u.email}</span>
                     </div>
                     <span className={`badge badge-${u.role === 'Admin' ? 'accent' : 'neutral'}`}>
@@ -202,10 +200,10 @@ export default function ProjectDetailPage() {
                 availableUsers.map((u) => (
                   <div key={u.id} className="available-member">
                     <div className="member-avatar member-avatar-muted">
-                      {u.name.charAt(0)}
+                      {u.full_name?.charAt(0) || 'U'}
                     </div>
                     <div className="member-info">
-                      <span className="member-name">{u.name}</span>
+                      <span className="member-name">{u.full_name}</span>
                       <span className="member-email">{u.email}</span>
                     </div>
                     <button

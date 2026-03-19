@@ -163,3 +163,52 @@
 .spin {
   animation: spin 1s linear infinite;
 }
+
+/* Social Login */
+.login-separator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.login-separator::before,
+.login-separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+  opacity: 0.5;
+}
+
+.social-login-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.social-btn img {
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));
+}
+
+.social-btn:hover {
+  background: var(--color-surface-elevated);
+  border-color: var(--color-text-muted);
+  transform: translateY(-1px);
+}

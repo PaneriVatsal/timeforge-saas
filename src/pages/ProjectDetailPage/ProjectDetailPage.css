@@ -215,3 +215,43 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .project-meta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .assignment-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+@media (max-width: 640px) {
+  .project-info-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .project-info-header h2 {
+    font-size: var(--text-xl);
+  }
+
+  .project-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-info-card {
+    padding: var(--space-4);
+  }
+
+  .meta-item {
+    padding: var(--space-3);
+  }
+
+  .project-detail-page {
+    gap: var(--space-4);
+  }
+}

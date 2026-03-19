@@ -16,9 +16,9 @@ import { useTheme } from '../../context/ThemeContext';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
-  const { user, company } = useAuth();
+  const { user, profile, company } = useAuth();
   const { isDark, toggleTheme } = useTheme();
-  const [displayName, setDisplayName] = useState(user?.name || '');
+  const [displayName, setDisplayName] = useState(profile?.full_name || '');
   const [saved, setSaved] = useState(false);
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [timerReminders, setTimerReminders] = useState(true);
@@ -29,7 +29,7 @@ export default function ProfilePage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const initials = user?.name
+  const initials = profile?.full_name
     ?.split(' ')
     .map((n) => n.charAt(0))
     .join('')
@@ -47,12 +47,12 @@ export default function ProfilePage() {
             </button>
           </div>
           <div className="profile-identity">
-            <h2>{user?.name || 'User'}</h2>
+            <h2>{profile?.full_name || 'User'}</h2>
             <p className="profile-email">{user?.email || 'email@example.com'}</p>
             <div className="profile-badges">
-              <span className={`badge badge-${user?.role === 'Admin' ? 'accent' : 'neutral'}`}>
+              <span className={`badge badge-${profile?.role === 'Admin' ? 'accent' : 'neutral'}`}>
                 <Shield size={10} />
-                {user?.role || 'User'}
+                {profile?.role || 'User'}
               </span>
               <span className="badge badge-neutral">
                 <Building2 size={10} />
@@ -99,7 +99,7 @@ export default function ProfilePage() {
               <input
                 type="text"
                 className="input"
-                value={user?.role || ''}
+                value={profile?.role || ''}
                 disabled
               />
             </div>

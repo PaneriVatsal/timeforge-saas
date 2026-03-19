@@ -1,0 +1,61 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottom-nav-height);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 var(--space-2);
+  z-index: 1000;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  transition: all var(--duration-normal) var(--ease-out);
+  flex: 1;
+  padding: var(--space-2) 0;
+}
+
+.bottom-nav-item svg {
+  transition: transform var(--duration-normal) var(--ease-spring);
+}
+
+.bottom-nav-item-active {
+  color: var(--color-accent);
+}
+
+.bottom-nav-item-active svg {
+  transform: translateY(-2px);
+}
+
+/* Antigravity design glow for active item */
+.bottom-nav-item-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 2px;
+  background: var(--color-accent);
+  box-shadow: 0 0 8px var(--color-accent-glow);
+  border-radius: 0 0 2px 2px;
+}
+
+/* Only show on mobile */
+@media (min-width: 1025px) {
+  .bottom-nav {
+    display: none;
+  }
+}

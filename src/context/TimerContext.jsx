@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useCallback, useRef, useEffect, useState } from 'react';
-import { generateId, timeLogs as initialTimeLogs } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { useProjects } from './ProjectContext';
 
 const TimerContext = createContext(null);
 
@@ -43,9 +44,33 @@ function timerReducer(state, action) {
 
 export function TimerProvider({ children }) {
   const [state, dispatch] = useReducer(timerReducer, initialState);
-  const [logs, setLogs] = useState([...initialTimeLogs]);
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const intervalRef = useRef(null);
-  const { user } = useAuth();
+  const { user, company } = useAuth();
+  const { refreshProjects } = useProjects();
+
+  const fetchLogs = useCallback(async () => {
+    if (!company) return;
+    setIsLoading(true);
+
+    const { data, error } = await supabase
+      .from('time_logs')
+      .select('*, projects(name)')
+      .eq('company_id', company.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching logs:', error);
+    } else {
+      setLogs(data);
+    }
+    setIsLoading(false);
+  }, [company]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   // Tick the timer every second when running
   useEffect(() => {
@@ -68,30 +93,34 @@ export function TimerProvider({ children }) {
     dispatch({ type: 'START', payload: { projectId, description } });
   }, []);
 
-  const stopTimer = useCallback(() => {
-    if (!state.is_running || !state.start_time) return null;
+  const stopTimer = useCallback(async () => {
+    if (!state.is_running || !state.start_time || !user || !company) return null;
 
     const endTime = Date.now();
     const durationMinutes = Math.max(1, Math.round((endTime - state.start_time) / 60000));
-    const today = new Date().toISOString().split('T')[0];
+    
+    const { data: newLog, error } = await supabase
+      .from('time_logs')
+      .insert({
+        user_id: user.id,
+        project_id: state.active_project_id,
+        description: state.active_task_description || 'Untitled task',
+        duration_minutes: durationMinutes,
+        company_id: company.id,
+      })
+      .select('*, projects(name)')
+      .single();
 
-    const newLog = {
-      id: generateId(),
-      user_id: user?.id || 'u1',
-      project_id: state.active_project_id,
-      description: state.active_task_description || 'Untitled task',
-      start_time: new Date(state.start_time).toISOString(),
-      end_time: new Date(endTime).toISOString(),
-      duration_minutes: durationMinutes,
-      date: today,
-      company_id: user?.company_id || 'c1',
-    };
+    if (error) {
+      console.error('Error saving time log:', error);
+      return null;
+    }
 
     setLogs((prev) => [newLog, ...prev]);
     dispatch({ type: 'STOP' });
+    refreshProjects();
     return newLog;
-  }, [state, user]);
-
+  }, [state, user, company, refreshProjects]);
   const setProject = useCallback((projectId) => {
     dispatch({ type: 'SET_PROJECT', payload: projectId });
   }, []);
@@ -100,15 +129,66 @@ export function TimerProvider({ children }) {
     dispatch({ type: 'SET_DESCRIPTION', payload: description });
   }, []);
 
-  const deleteLog = useCallback((logId) => {
-    setLogs((prev) => prev.filter((l) => l.id !== logId));
-  }, []);
+  const deleteLog = useCallback(async (logId) => {
+    const { error } = await supabase
+      .from('time_logs')
+      .delete()
+      .eq('id', logId);
 
-  const editLog = useCallback((logId, updates) => {
+    if (error) {
+      console.error('Error deleting log:', error);
+      return;
+    }
+
+    setLogs((prev) => prev.filter((l) => l.id !== logId));
+    refreshProjects();
+  }, [refreshProjects]);
+
+  const editLog = useCallback(async (logId, updates) => {
+    const { error } = await supabase
+      .from('time_logs')
+      .update(updates)
+      .eq('id', logId);
+
+    if (error) {
+      console.error('Error updating log:', error);
+      return;
+    }
+
     setLogs((prev) =>
       prev.map((l) => (l.id === logId ? { ...l, ...updates } : l))
     );
-  }, []);
+    refreshProjects();
+  }, [refreshProjects]);
+
+  const addManualLog = useCallback(async (data) => {
+    if (!user || !company) return null;
+
+    // Mark as manual entry for UI detection
+    const description = `[M] ${data.description || 'Manual entry'}`;
+
+    const { data: newLog, error } = await supabase
+      .from('time_logs')
+      .insert({
+        user_id: user.id,
+        project_id: data.projectId,
+        description,
+        duration_minutes: Number(data.durationMinutes) || 0,
+        company_id: company.id,
+        date: data.date || new Date().toISOString().split('T')[0]
+      })
+      .select('*, projects(name)')
+      .single();
+
+    if (error) {
+      console.error('Error adding manual log:', error);
+      return null;
+    }
+
+    setLogs((prev) => [newLog, ...prev]);
+    refreshProjects();
+    return newLog;
+  }, [user, company, refreshProjects]);
 
   // Format elapsed seconds
   const formatElapsed = (seconds) => {
@@ -123,13 +203,16 @@ export function TimerProvider({ children }) {
       value={{
         ...state,
         logs,
+        isLoading,
         startTimer,
         stopTimer,
         setProject,
         setDescription,
         deleteLog,
         editLog,
+        addManualLog,
         formattedTime: formatElapsed(state.elapsed_seconds),
+        refreshLogs: fetchLogs,
       }}
     >
       {children}

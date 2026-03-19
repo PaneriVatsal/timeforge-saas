@@ -24,3 +24,32 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Credentials & environment variables
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+dist-ssr/
+
+# Local logs and temporary debug files
+*.log
+main_served.js
+debug_output.txt
+curl_output.html
+
+# Local scripts and tests
+check-db.js
+debug-user.js
+test-insert.js
+test-register.js
+verify-marker.js
+seed-db.js
+
+# Database setup scripts (keep separate from source)
+production_setup.sql
+seed_data.sql
+supabase_automations.sql
+

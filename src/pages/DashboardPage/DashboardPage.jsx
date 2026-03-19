@@ -12,10 +12,12 @@ import {
   Save,
   ChevronRight,
   Target,
+  Plus,
 } from 'lucide-react';
 import { useTimer } from '../../context/TimerContext';
 import { useAuth } from '../../context/AuthContext';
-import { projects as allProjects, users, formatDuration } from '../../data/mockData';
+import { useProjects } from '../../context/ProjectContext';
+import { formatDuration } from '../../lib/utils';
 import './DashboardPage.css';
 
 // Productivity Ring SVG
@@ -65,15 +67,19 @@ export default function DashboardPage() {
     active_task_description,
     formattedTime,
     logs,
+    isLoading: isLogsLoading,
     startTimer,
     stopTimer,
     setProject,
     setDescription,
     deleteLog,
     editLog,
+    addManualLog,
   } = useTimer();
-  const { user } = useAuth();
 
+  const { profile, company } = useAuth();
+  const { projects: allProjects, isLoading: isProjectsLoading } = useProjects();
+  
   const [selectedProject, setSelectedProject] = useState(active_project_id || '');
   const [taskDesc, setTaskDesc] = useState(active_task_description || '');
 
@@ -82,20 +88,35 @@ export default function DashboardPage() {
   const [editDesc, setEditDesc] = useState('');
   const [editHours, setEditHours] = useState('0');
   const [editMinutes, setEditMinutes] = useState('0');
+  
+  // Manual entry modal
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualData, setManualData] = useState({
+    projectId: '',
+    description: '',
+    hours: '0',
+    minutes: '0',
+    date: new Date().toISOString().split('T')[0],
+    isPastWork: false
+  });
 
-  // Get projects assigned to this user
-  const assignedProjects = useMemo(() => {
-    if (user?.role === 'Admin') return allProjects.filter((p) => p.status === 'active');
-    return allProjects.filter(
-      (p) => p.assigned_users.includes(user?.id) && p.status === 'active'
+  // Groups and Stats
+  const groupedLogs = useMemo(() => {
+    const groups = {};
+    logs.forEach((log) => {
+      const dateStr = log.created_at ? new Date(log.created_at).toLocaleDateString() : 'Today';
+      if (!groups[dateStr]) groups[dateStr] = [];
+      groups[dateStr].push(log);
+    });
+    return Object.entries(groups).sort(
+      (a, b) => new Date(b[0]) - new Date(a[0])
     );
-  }, [user]);
+  }, [logs]);
 
-  // Today's logs for this user
   const today = new Date().toISOString().split('T')[0];
   const todayLogs = useMemo(
-    () => logs.filter((l) => l.user_id === user?.id && l.date === today),
-    [logs, user, today]
+    () => logs.filter((l) => l.user_id === profile?.id && (l.created_at?.startsWith(today) || l.date === today)),
+    [logs, profile, today]
   );
 
   const totalTodayMinutes = useMemo(
@@ -109,13 +130,35 @@ export default function DashboardPage() {
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekStr = weekAgo.toISOString().split('T')[0];
-    return logs.filter((l) => l.user_id === user?.id && l.date >= weekStr);
-  }, [logs, user]);
+    return logs.filter((l) => l.user_id === profile?.id && (l.created_at >= weekStr || l.date >= weekStr));
+  }, [logs, profile]);
 
   const weekTotalMinutes = useMemo(
     () => weekLogs.reduce((sum, l) => sum + l.duration_minutes, 0),
     [weekLogs]
   );
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    const activeProjects = allProjects.filter(p => p.status === 'active').length;
+    const dailyGoal = 480; // 8h
+    const productivityPct = Math.min(100, Math.round((totalTodayMinutes / dailyGoal) * 100));
+
+    return {
+      trackedThisWeek: formatDuration(weekTotalMinutes),
+      productivityPct,
+      activeProjects,
+    };
+  }, [allProjects, totalTodayMinutes, weekTotalMinutes]);
+
+  const { trackedThisWeek, productivityPct, activeProjects: activeProjectsCount } = stats;
+
+  const assignedProjects = useMemo(() => {
+    if (profile?.role === 'Admin') return allProjects.filter((p) => p.status === 'active');
+    return allProjects.filter(
+      (p) => p.assigned_users?.includes(profile?.id) && p.status === 'active'
+    );
+  }, [allProjects, profile]);
 
   // Daily breakdown for the week (last 7 days)
   const dailyBreakdown = useMemo(() => {
@@ -141,7 +184,13 @@ export default function DashboardPage() {
     return pIds.size;
   }, [weekLogs]);
 
-  const productivityPct = Math.round((totalTodayMinutes / 480) * 100);
+  const recentDescriptions = useMemo(() => {
+    const descs = logs
+      .filter((l) => l.user_id === profile?.id)
+      .map((l) => l.description)
+      .filter((d) => d && d.trim().length > 0);
+    return [...new Set(descs)].slice(0, 10);
+  }, [logs, profile]);
 
   const handleToggleTimer = () => {
     if (is_running) {
@@ -167,8 +216,12 @@ export default function DashboardPage() {
   };
 
   const openEditModal = (log) => {
-    setEditingLog(log);
-    setEditDesc(log.description);
+    // Detect if manual
+    const isManual = log.description?.startsWith('[M]');
+    const cleanDesc = isManual ? log.description.substring(4) : log.description;
+    
+    setEditingLog({ ...log, isManual });
+    setEditDesc(cleanDesc);
     setEditHours(Math.floor(log.duration_minutes / 60).toString());
     setEditMinutes((log.duration_minutes % 60).toString());
   };
@@ -176,16 +229,52 @@ export default function DashboardPage() {
   const saveEdit = () => {
     if (!editingLog) return;
     const totalMinutes = (parseInt(editHours) || 0) * 60 + (parseInt(editMinutes) || 0);
+    
+    // Preserve manual marker if it existed
+    const description = editingLog.isManual ? `[M] ${editDesc}` : editDesc;
+
     editLog(editingLog.id, {
-      description: editDesc,
+      description,
       duration_minutes: totalMinutes || 1, // Minimum 1 minute
     });
     setEditingLog(null);
   };
 
+  const handleManualSave = async (e) => {
+    e.preventDefault();
+    if (!manualData.projectId) return;
+
+    const totalMinutes = (parseInt(manualData.hours) || 0) * 60 + (parseInt(manualData.minutes) || 0);
+    await addManualLog({
+      projectId: manualData.projectId,
+      description: manualData.description,
+      durationMinutes: totalMinutes,
+      date: manualData.date
+    });
+
+    setShowManualModal(false);
+    setManualData({
+      projectId: '',
+      description: '',
+      hours: '0',
+      minutes: '0',
+      date: new Date().toISOString().split('T')[0],
+      isPastWork: false
+    });
+  };
+
   const getProjectName = (id) => allProjects.find((p) => p.id === id)?.name || 'Unknown';
 
   const getBudgetPct = (p) => p.budgeted_hours ? Math.min(100, Math.round((p.logged_hours / p.budgeted_hours) * 100)) : 0;
+
+  if (isLogsLoading && logs.length === 0) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <span className="loading-text">Synchronizing Data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-page">
@@ -196,8 +285,8 @@ export default function DashboardPage() {
             <Clock size={20} />
           </div>
           <div className="stat-info">
-            <span className="stat-value">{formatDuration(totalTodayMinutes)}</span>
-            <span className="stat-label">Today's Total</span>
+            <span className="stat-value">{formatDuration(weekTotalMinutes)}</span>
+            <span className="stat-label">This Week</span>
           </div>
         </div>
         <div className="stat-card card">
@@ -240,6 +329,16 @@ export default function DashboardPage() {
             Time Tracker
           </h3>
           {is_running && <span className="badge badge-accent">● Recording</span>}
+          {!is_running && (
+            <button 
+              className="btn btn-ghost btn-sm" 
+              onClick={() => setShowManualModal(true)}
+              id="add-manual-entry-btn"
+            >
+              <Plus size={14} />
+              Manual Task
+            </button>
+          )}
         </div>
 
         <div className="timer-body">
@@ -266,14 +365,20 @@ export default function DashboardPage() {
                 ))}
               </select>
 
-              <input
-                type="text"
-                className="input"
-                placeholder="What are you working on?"
-                value={is_running ? active_task_description : taskDesc}
-                onChange={handleDescChange}
-                id="timer-description-input"
-              />
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="What are you working on?"
+                  value={is_running ? active_task_description : taskDesc}
+                  onChange={handleDescChange}
+                  id="timer-description-input"
+                  list="recent-tasks"
+                />
+                <datalist id="recent-tasks">
+                  {recentDescriptions.map((d, i) => (
+                    <option key={i} value={d} />
+                  ))}
+                </datalist>
             </div>
 
             <button
@@ -412,37 +517,50 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {todayLogs.map((log, i) => (
-                  <tr key={log.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                    <td>
-                      <span className="badge badge-neutral">
-                        {getProjectName(log.project_id)}
-                      </span>
-                    </td>
-                    <td className="log-description">{log.description}</td>
-                    <td>
-                      <span className="log-duration">{formatDuration(log.duration_minutes)}</span>
-                    </td>
-                    <td>
-                      <div className="log-actions">
-                        <button
-                          className="btn btn-ghost btn-icon btn-sm edit-log-btn"
-                          title="Edit"
-                          onClick={() => openEditModal(log)}
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-icon btn-sm delete-log-btn"
-                          title="Delete"
-                          onClick={() => deleteLog(log.id)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {todayLogs.map((log, i) => {
+                  const isManual = log.description?.startsWith('[M]') || 
+                                  (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
+                  const cleanDescription = log.description?.startsWith('[M]') 
+                    ? log.description.substring(4) // Remove '[M] '
+                    : log.description || 'Untitled task';
+
+                  return (
+                    <tr key={log.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                      <td>
+                        <span className="badge badge-neutral">
+                          {getProjectName(log.project_id)}
+                        </span>
+                      </td>
+                      <td className="log-description">{cleanDescription}</td>
+                      <td>
+                        <div className="log-duration-cell">
+                          <span className="log-duration">{formatDuration(log.duration_minutes)}</span>
+                          {isManual && (
+                            <span className="badge badge-neutral badge-xs">Manual</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="log-actions">
+                          <button
+                            className="btn btn-ghost btn-icon btn-sm edit-log-btn"
+                            title="Edit"
+                            onClick={() => openEditModal(log)}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-icon btn-sm delete-log-btn"
+                            title="Delete"
+                            onClick={() => deleteLog(log.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -527,6 +645,114 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Entry Modal */}
+      {showManualModal && (
+        <div className="modal-overlay" onClick={() => setShowManualModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Log Time Manually</h3>
+              <button
+                className="btn btn-ghost btn-icon"
+                onClick={() => setShowManualModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleManualSave}>
+              <div className="form-group">
+                <label>Project *</label>
+                <select
+                  className="select"
+                  value={manualData.projectId}
+                  onChange={(e) => setManualData({ ...manualData, projectId: e.target.value })}
+                  required
+                >
+                  <option value="">Select a project...</option>
+                  {assignedProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="What did you work on?"
+                  value={manualData.description}
+                  onChange={(e) => setManualData({ ...manualData, description: e.target.value })}
+                />
+              </div>
+
+              <div className="form-row-manual" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={manualData.date}
+                    onChange={(e) => setManualData({ ...manualData, date: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={manualData.isPastWork}
+                      onChange={(e) => setManualData({ ...manualData, isPastWork: e.target.checked })}
+                    />
+                    <span>Mark as Past Work</span>
+                  </label>
+                </div>
+              </div>
+              <div className="form-row-manual" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--space-4)' }}>
+                <div className="form-group">
+                  <label>Duration (h:m)</label>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <input
+                      type="number"
+                      className="input text-center"
+                      placeholder="H"
+                      min="0"
+                      value={manualData.hours}
+                      onChange={(e) => setManualData({ ...manualData, hours: e.target.value })}
+                    />
+                    <div style={{ alignSelf: 'center', fontWeight: 'bold' }}>:</div>
+                    <input
+                      type="number"
+                      className="input text-center"
+                      placeholder="M"
+                      min="0"
+                      max="59"
+                      value={manualData.minutes}
+                      onChange={(e) => setManualData({ ...manualData, minutes: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: 'var(--space-4)' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowManualModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-accent">
+                  <Plus size={16} />
+                  Log Time
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

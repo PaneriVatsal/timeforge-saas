@@ -100,3 +100,30 @@
 .header-greeting strong {
   color: var(--color-text);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .top-header {
+    left: 0;
+    height: var(--header-height-mobile);
+    padding: 0 var(--space-4);
+  }
+
+  .header-greeting {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-search {
+    display: none;
+  }
+  
+  .page-date {
+    display: none;
+  }
+  
+  .page-title {
+    font-size: var(--text-base);
+  }
+}

@@ -1,79 +1,119 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { generateId } from '../data/mockData';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext(null);
 
-// Notification types: 'timer', 'budget', 'assignment', 'info'
-const initialNotifications = [
-  {
-    id: 'n1',
-    type: 'budget',
-    title: 'Budget Warning',
-    message: 'Healthcare Dashboard is at 91% of its budgeted hours.',
-    read: false,
-    timestamp: new Date(Date.now() - 30 * 60000).toISOString(), // 30 min ago
-    icon: 'alert-triangle',
-  },
-  {
-    id: 'n2',
-    type: 'assignment',
-    title: 'New Assignment',
-    message: 'You were added to the Mobile Banking App project.',
-    read: false,
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(), // 2 hours ago
-    icon: 'user-plus',
-  },
-  {
-    id: 'n3',
-    type: 'info',
-    title: 'Weekly Report Ready',
-    message: 'Your weekly timesheet summary is available for review.',
-    read: true,
-    timestamp: new Date(Date.now() - 24 * 3600000).toISOString(), // 1 day ago
-    icon: 'bar-chart',
-  },
-  {
-    id: 'n4',
-    type: 'timer',
-    title: 'Long Session',
-    message: 'You tracked 4+ hours on E-Commerce Platform yesterday. Great focus!',
-    read: true,
-    timestamp: new Date(Date.now() - 20 * 3600000).toISOString(),
-    icon: 'clock',
-  },
-];
-
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([...initialNotifications]);
+  const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, company } = useAuth();
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching notifications:', error);
+    } else {
+      setNotifications(data);
+    }
+    setIsLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const addNotification = useCallback((notification) => {
-    const newNotif = {
-      id: generateId(),
-      read: false,
-      timestamp: new Date().toISOString(),
-      ...notification,
-    };
-    setNotifications((prev) => [newNotif, ...prev]);
-  }, []);
+  const addNotification = useCallback(async (notification) => {
+    if (!user || !company) return;
 
-  const markAsRead = useCallback((id) => {
+    const { data: newNotif, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: user.id,
+        company_id: company.id,
+        ...notification,
+        read: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding notification:', error);
+      return;
+    }
+
+    setNotifications((prev) => [newNotif, ...prev]);
+  }, [user, company]);
+
+  const markAsRead = useCallback(async (id) => {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error marking as read:', error);
+      return;
+    }
+
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
   }, []);
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+
+    if (error) {
+      console.error('Error marking all as read:', error);
+      return;
+    }
+
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+  }, [user]);
 
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error clearing notifications:', error);
+      return;
+    }
+
     setNotifications([]);
-  }, []);
+  }, [user]);
 
-  const removeNotification = useCallback((id) => {
+  const removeNotification = useCallback(async (id) => {
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error removing notification:', error);
+      return;
+    }
+
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
@@ -91,6 +131,7 @@ export function NotificationProvider({ children }) {
         notifications,
         unreadCount,
         isOpen,
+        isLoading,
         addNotification,
         markAsRead,
         markAllAsRead,
@@ -98,6 +139,7 @@ export function NotificationProvider({ children }) {
         removeNotification,
         togglePanel,
         closePanel,
+        refreshNotifications: fetchNotifications,
       }}
     >
       {children}

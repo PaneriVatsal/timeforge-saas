@@ -11,15 +11,26 @@ import ProjectsPage from './pages/ProjectsPage/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage/ProjectDetailPage';
 import ReportsPage from './pages/ReportsPage/ReportsPage';
 import ProfilePage from './pages/ProfilePage/ProfilePage';
+import RegisterPage from './pages/RegisterPage/RegisterPage';
+import TeamPage from './pages/TeamPage/TeamPage';
 
 function ProtectedRoute({ children, adminOnly = false }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, profile, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <span className="loading-text">Loading TimeForge...</span>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (adminOnly && user?.role !== 'Admin') {
+  if (adminOnly && profile?.role !== 'Admin') {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -27,7 +38,17 @@ function ProtectedRoute({ children, adminOnly = false }) {
 }
 
 function AuthRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner"></div>
+        <span className="loading-text">Initializing Session...</span>
+      </div>
+    );
+  }
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -46,15 +67,23 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/register"
+        element={
+          <AuthRoute>
+            <RegisterPage />
+          </AuthRoute>
+        }
+      />
+      <Route
         element={
           <ProtectedRoute>
-            <TimerProvider>
-              <ProjectProvider>
+            <ProjectProvider>
+              <TimerProvider>
                 <NotificationProvider>
                   <AppLayout />
                 </NotificationProvider>
-              </ProjectProvider>
-            </TimerProvider>
+              </TimerProvider>
+            </ProjectProvider>
           </ProtectedRoute>
         }
       >
@@ -80,6 +109,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/team"
+          element={
+            <ProtectedRoute adminOnly>
+              <TeamPage />
             </ProtectedRoute>
           }
         />

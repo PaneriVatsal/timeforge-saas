@@ -226,3 +226,39 @@
   padding: var(--space-4) var(--space-6);
   border-top: 1px solid var(--color-border-light);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .profile-hero {
+    padding: var(--space-5);
+  }
+
+  .profile-avatar-section {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-4);
+  }
+
+  .profile-identity {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-badges {
+    justify-content: center;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .profile-form {
+    padding: var(--space-4);
+  }
+
+  .pref-item {
+    padding: var(--space-4);
+  }
+}

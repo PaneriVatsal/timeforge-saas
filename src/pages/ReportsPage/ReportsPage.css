@@ -133,6 +133,18 @@
   background: var(--color-surface);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.date-filter-group::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.date-filter-group .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .custom-date-row {
@@ -239,4 +251,106 @@
   font-size: var(--text-xl);
   font-weight: 700;
   color: var(--color-accent);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+  }
+
+  .search-box {
+    max-width: 100%;
+  }
+
+  .date-filter-group {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .custom-date-row {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .reports-table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .reports-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .ai-phase-badge {
+    position: static;
+    margin-bottom: var(--space-4);
+    display: flex;
+    justify-content: center;
+  }
+
+  .reports-table-wrapper {
+    display: none;
+  }
+
+  .reports-mobile-list {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+
+  .mobile-report-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .m-report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .m-report-project {
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .m-report-duration {
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+  .m-report-desc {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .m-report-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border-light);
+    padding-top: var(--space-2);
+  }
+}
+@media (min-width: 641px) {
+  .reports-mobile-list {
+    display: none;
+  }
 }

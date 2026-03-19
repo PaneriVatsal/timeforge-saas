@@ -7,15 +7,17 @@ import {
   LogOut,
   Timer,
   ChevronRight,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTimer } from '../../context/TimerContext';
-import { projects } from '../../data/mockData';
+import { useProjects } from '../../context/ProjectContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
-  const { user, company, logout } = useAuth();
+  const { profile, company, logout } = useAuth();
   const { is_running, active_project_id, formattedTime } = useTimer();
+  const { projects } = useProjects();
 
   const activeProject = projects.find((p) => p.id === active_project_id);
 
@@ -25,11 +27,12 @@ export default function Sidebar() {
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/projects', icon: FolderKanban, label: 'Projects', adminOnly: true },
     { to: '/reports', icon: BarChart3, label: 'Reports', adminOnly: true },
+    { to: '/team', icon: Users, label: 'Team', adminOnly: true },
     { to: '/profile', icon: Settings, label: 'Settings' },
   ];
 
   const filteredItems = navItems.filter(
-    (item) => !item.adminOnly || user?.role === 'Admin'
+    (item) => !item.adminOnly || profile?.role === 'Admin'
   );
 
   return (
@@ -82,11 +85,11 @@ export default function Sidebar() {
       <div className="sidebar-footer">
         <div className="sidebar-user" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
           <div className="user-avatar">
-            {user?.name?.charAt(0) || 'U'}
+            {profile?.full_name?.charAt(0) || 'U'}
           </div>
           <div className="user-info">
-            <span className="user-name">{user?.name || 'User'}</span>
-            <span className="user-role">{user?.role || 'Role'}</span>
+            <span className="user-name">{profile?.full_name || 'User'}</span>
+            <span className="user-role">{profile?.role || 'Role'}</span>
           </div>
         </div>
         <button className="btn btn-ghost btn-icon" onClick={logout} title="Logout">

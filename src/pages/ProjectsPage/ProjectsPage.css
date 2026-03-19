@@ -208,3 +208,30 @@
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .page-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box, .search-box .input {
+    width: 100% !important;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-card {
+    padding: var(--space-4);
+  }
+}

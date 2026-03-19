@@ -13,7 +13,7 @@ const pageTitles = {
 
 export default function TopHeader() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   // Handle dynamic routes like /projects/:id
   const basePath = '/' + location.pathname.split('/').filter(Boolean)[0];
@@ -45,7 +45,7 @@ export default function TopHeader() {
         </div>
         <NotificationPanel />
         <div className="header-greeting">
-          <span>Welcome, <strong>{user?.name?.split(' ')[0] || 'User'}</strong></span>
+          <span>Welcome, <strong>{profile?.full_name?.split(' ')[0] || 'User'}</strong></span>
         </div>
       </div>
     </header>

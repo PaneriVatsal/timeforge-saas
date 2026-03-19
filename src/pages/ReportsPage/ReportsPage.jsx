@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { useTimer } from '../../context/TimerContext';
 import { useAuth } from '../../context/AuthContext';
-import { projects, users, formatDuration } from '../../data/mockData';
+import { useProjects } from '../../context/ProjectContext';
+import { formatDuration } from '../../lib/utils';
 import './ReportsPage.css';
 
 const DATE_FILTERS = [
@@ -22,14 +23,15 @@ const DATE_FILTERS = [
 
 export default function ReportsPage() {
   const { logs } = useTimer();
-  const { user } = useAuth();
+  const { profile, companyProfiles } = useAuth();
+  const { projects } = useProjects();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
 
-  const companyLogs = logs.filter((l) => l.company_id === user?.company_id);
+  const companyLogs = logs; // Already filtered in context
 
   // Apply date filter
   const dateFiltered = useMemo(() => {
@@ -38,24 +40,24 @@ export default function ReportsPage() {
 
     switch (dateFilter) {
       case 'today':
-        return companyLogs.filter((l) => l.date === today);
+        return companyLogs.filter((l) => (l.created_at?.startsWith(today) || l.date === today));
       case 'week': {
         const weekAgo = new Date(now);
         weekAgo.setDate(weekAgo.getDate() - 7);
         const weekStr = weekAgo.toISOString().split('T')[0];
-        return companyLogs.filter((l) => l.date >= weekStr);
+        return companyLogs.filter((l) => (l.created_at >= weekStr || l.date >= weekStr));
       }
       case 'month': {
         const monthAgo = new Date(now);
         monthAgo.setMonth(monthAgo.getMonth() - 1);
         const monthStr = monthAgo.toISOString().split('T')[0];
-        return companyLogs.filter((l) => l.date >= monthStr);
+        return companyLogs.filter((l) => (l.created_at >= monthStr || l.date >= monthStr));
       }
       case 'custom': {
         return companyLogs.filter(
           (l) =>
-            (!customStart || l.date >= customStart) &&
-            (!customEnd || l.date <= customEnd)
+            (!customStart || (l.created_at || l.date) >= customStart) &&
+            (!customEnd || (l.created_at || l.date) <= customEnd)
         );
       }
       default:
@@ -69,10 +71,10 @@ export default function ReportsPage() {
     const q = searchQuery.toLowerCase();
     return dateFiltered.filter((l) => {
       const project = projects.find((p) => p.id === l.project_id);
-      const employee = users.find((u) => u.id === l.user_id);
+      const employee = companyProfiles.find((u) => u.id === l.user_id);
       return (
         project?.name.toLowerCase().includes(q) ||
-        employee?.name.toLowerCase().includes(q) ||
+        employee?.full_name.toLowerCase().includes(q) ||
         l.description?.toLowerCase().includes(q)
       );
     });
@@ -84,7 +86,46 @@ export default function ReportsPage() {
   );
 
   const getProjectName = (id) => projects.find((p) => p.id === id)?.name || 'Unknown';
-  const getUserName = (id) => users.find((u) => u.id === id)?.name || 'Unknown';
+  const getUserName = (id) => companyProfiles.find((u) => u.id === id)?.full_name || 'Unknown';
+
+  const aiInsights = useMemo(() => {
+    const active = projects.filter(p => p.status === 'active' && p.budgeted_hours > 0);
+    const insights = [];
+
+    // 1. Budget warnings
+    active.forEach(p => {
+      const pct = (p.logged_hours / p.budgeted_hours) * 100;
+      if (pct > 90) {
+        insights.push({
+          type: 'danger',
+          text: `Critical: ${p.name} has exhausted ${Math.round(pct)}% of its budget. Immediate review required.`
+        });
+      } else if (pct > 75) {
+        insights.push({
+          type: 'warning',
+          text: `Alert: ${p.name} is at ${Math.round(pct)}% budget. Predict completion likely to exceed allocation.`
+        });
+      }
+    });
+
+    // 2. Pace warning (if logs exist)
+    if (totalHours > 0 && insights.length < 2) {
+      insights.push({
+        type: 'info',
+        text: `Team efficiency is up this week with ${formatDuration(totalHours)} tracked across ${projects.length} projects.`
+      });
+    }
+
+    // Fallback if no issues
+    if (insights.length === 0) {
+      insights.push({
+        type: 'info',
+        text: "Project trajectories look stable. No budget overruns predicted for this week."
+      });
+    }
+
+    return insights.slice(0, 2);
+  }, [projects, totalHours]);
 
   return (
     <div className="reports-page">
@@ -100,18 +141,14 @@ export default function ReportsPage() {
           </div>
         </div>
         <div className="ai-insights-body">
-          <div className="ai-insight-item">
-            <BarChart3 size={16} />
-            <span>
-              <strong>E-Commerce Platform</strong> is at 65% budget utilization with 2 weeks left — on track.
-            </span>
-          </div>
-          <div className="ai-insight-item">
-            <Clock size={16} />
-            <span>
-              <strong>Healthcare Dashboard</strong> may exceed budget by Friday at current pace.
-            </span>
-          </div>
+          {aiInsights.map((insight, i) => (
+            <div key={i} className={`ai-insight-item ai-insight-${insight.type}`}>
+              {insight.type === 'danger' ? <Clock className="text-danger" size={16} /> : <BarChart3 size={16} />}
+              <span>
+                {insight.text}
+              </span>
+            </div>
+          ))}
         </div>
         <div className="ai-phase-badge">
           <Sparkles size={12} />
@@ -188,45 +225,99 @@ export default function ReportsPage() {
             <p>No time logs match your filters.</p>
           </div>
         ) : (
-          <div className="reports-table-wrapper">
-            <table className="data-table" id="reports-data-table">
-              <thead>
-                <tr>
-                  <th>Project</th>
-                  <th>Employee</th>
-                  <th>Description</th>
-                  <th>Date</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td>
-                      <span className="badge badge-neutral">
+          <>
+            <div className="reports-table-wrapper">
+              <table className="data-table" id="reports-data-table">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Employee</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map((log) => {
+                    const isManual = log.description?.startsWith('[M]') || 
+                                    (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
+                    const cleanDescription = (log.description?.startsWith('[M]') 
+                      ? log.description.substring(4) // Remove '[M] '
+                      : log.description) || 'Untitled task';
+
+                    return (
+                      <tr key={log.id}>
+                        <td>
+                          <span className="badge badge-neutral">
+                            {getProjectName(log.project_id)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="report-employee">
+                            <div className="report-avatar">
+                              {getUserName(log.user_id).charAt(0)}
+                            </div>
+                            {getUserName(log.user_id)}
+                          </div>
+                        </td>
+                        <td className="report-desc">
+                          {cleanDescription}
+                          {isManual && <span className="badge badge-neutral badge-xs ml-2">Manual</span>}
+                        </td>
+                        <td className="report-date">{log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date}</td>
+                        <td>
+                          <span className="log-duration">
+                            {formatDuration(log.duration_minutes)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile View List */}
+            <div className="reports-mobile-list">
+              {filteredLogs.map((log) => {
+                const isManual = log.description?.startsWith('[M]') || 
+                                  (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
+                const cleanDescription = (log.description?.startsWith('[M]') 
+                  ? log.description.substring(4) // Remove '[M] '
+                  : log.description) || 'Untitled task';
+                
+                return (
+                  <div key={log.id} className="mobile-report-card">
+                    <div className="m-report-header">
+                      <span className="badge badge-neutral m-report-project">
                         {getProjectName(log.project_id)}
                       </span>
-                    </td>
-                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isManual && <span className="badge badge-neutral badge-xs">Manual</span>}
+                        <span className="m-report-duration">
+                          {formatDuration(log.duration_minutes)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="m-report-desc">
+                      {cleanDescription}
+                    </div>
+                    <div className="m-report-footer">
                       <div className="report-employee">
-                        <div className="report-avatar">
+                        <div className="report-avatar" style={{ width: '20px', height: '20px', fontSize: '10px' }}>
                           {getUserName(log.user_id).charAt(0)}
                         </div>
-                        {getUserName(log.user_id)}
+                        <span>{getUserName(log.user_id).split(' ')[0]}</span>
                       </div>
-                    </td>
-                    <td className="report-desc">{log.description}</td>
-                    <td className="report-date">{log.date}</td>
-                    <td>
-                      <span className="log-duration">
-                        {formatDuration(log.duration_minutes)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <div className="report-date">
+                        {log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Footer with Total */}

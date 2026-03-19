@@ -13,12 +13,12 @@ import {
 } from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
-import { users, formatDuration } from '../../data/mockData';
+import { formatDuration } from '../../lib/utils';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
   const { projects, createProject, deleteProject } = useProjects();
-  const { user } = useAuth();
+  const { profile, company } = useAuth();
   const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
@@ -28,26 +28,30 @@ export default function ProjectsPage() {
     client: '',
     budgeted_hours: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const companyProjects = projects.filter((p) => p.company_id === user?.company_id);
-
-  const filteredProjects = companyProjects.filter(
+  const filteredProjects = projects.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.client.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     if (!newProject.name.trim()) return;
 
-    const project = createProject({
+    setIsSubmitting(true);
+    const project = await createProject({
       ...newProject,
-      company_id: user?.company_id,
+      company_id: company?.id,
     });
-    setShowModal(false);
-    setNewProject({ name: '', client: '', budgeted_hours: '' });
-    navigate(`/projects/${project.id}`);
+    setIsSubmitting(false);
+
+    if (project) {
+      setShowModal(false);
+      setNewProject({ name: '', client: '', budgeted_hours: '' });
+      navigate(`/projects/${project.id}`);
+    }
   };
 
   const getBudgetPercent = (logged, budgeted) => {
@@ -68,7 +72,7 @@ export default function ProjectsPage() {
       <div className="page-header animate-fade-in-up">
         <div>
           <h2>Projects</h2>
-          <p className="page-subtitle">{companyProjects.length} total projects</p>
+          <p className="page-subtitle">{projects.length} total projects</p>
         </div>
         <div className="page-actions">
           <div className="search-box">
@@ -96,11 +100,9 @@ export default function ProjectsPage() {
       {/* Projects Grid */}
       <div className="projects-grid">
         {filteredProjects.map((project, i) => {
-          const budgetPct = getBudgetPercent(project.logged_hours, project.budgeted_hours);
-          const budgetStatus = getBudgetStatus(project.logged_hours, project.budgeted_hours);
-          const assignedNames = project.assigned_users
-            .map((uid) => users.find((u) => u.id === uid)?.name)
-            .filter(Boolean);
+          const budgetPct = getBudgetPercent(project.logged_hours || 0, project.budgeted_hours || 0);
+          const budgetStatus = getBudgetStatus(project.logged_hours || 0, project.budgeted_hours || 0);
+          const assignedCount = project.assigned_users?.length || 0;
 
           return (
             <div
@@ -153,19 +155,18 @@ export default function ProjectsPage() {
               <div className="project-team">
                 <Users size={14} />
                 <div className="team-avatars">
-                  {assignedNames.slice(0, 3).map((name, j) => (
-                    <div key={j} className="team-avatar" title={name}>
-                      {name.charAt(0)}
-                    </div>
-                  ))}
-                  {assignedNames.length > 3 && (
+                  {/* For now, just show a generic avatar placeholder since we don't fetch all users yet */}
+                  <div className="team-avatar">
+                   {assignedCount > 0 ? '👤' : '?'}
+                  </div>
+                  {assignedCount > 1 && (
                     <div className="team-avatar team-avatar-more">
-                      +{assignedNames.length - 3}
+                      +{assignedCount - 1}
                     </div>
                   )}
                 </div>
                 <span className="team-count">
-                  {assignedNames.length} member{assignedNames.length !== 1 ? 's' : ''}
+                  {assignedCount} member{assignedCount !== 1 ? 's' : ''}
                 </span>
               </div>
 
@@ -260,8 +261,20 @@ export default function ProjectsPage() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-accent" id="project-save-btn">
-                  Create Project
+                <button 
+                  type="submit" 
+                  className="btn btn-accent" 
+                  id="project-save-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Project'
+                  )}
                 </button>
               </div>
             </form>
