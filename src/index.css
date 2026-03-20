@@ -604,6 +604,14 @@ ul, ol {
   animation: modalContentIn var(--duration-slow) var(--ease-spring);
 }
 
+@media (max-width: 640px) {
+  .modal-content {
+    margin: 0 var(--space-4);
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+  }
+}
+
 .modal-header {
   display: flex;
   align-items: center;

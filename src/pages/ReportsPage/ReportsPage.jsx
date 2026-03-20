@@ -88,6 +88,28 @@ export default function ReportsPage() {
   const getProjectName = (id) => projects.find((p) => p.id === id)?.name || 'Unknown';
   const getUserName = (id) => companyProfiles.find((u) => u.id === id)?.full_name || 'Unknown';
 
+  const exportToCSV = () => {
+    const headers = ['Project', 'Employee', 'Description', 'Date', 'Duration (min)'];
+    const rows = filteredLogs.map((log) => [
+      getProjectName(log.project_id),
+      getUserName(log.user_id),
+      log.description?.replace(/,/g, ' '), // Basic CSV escaping
+      log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date,
+      log.duration_minutes,
+    ]);
+
+    const csvContent = [headers, ...rows].map((e) => e.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `timesheet-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const aiInsights = useMemo(() => {
     const active = projects.filter(p => p.status === 'active' && p.budgeted_hours > 0);
     const insights = [];
@@ -214,9 +236,19 @@ export default function ReportsPage() {
       <div className="reports-table-card card animate-fade-in-up stagger-3">
         <div className="reports-table-header">
           <h3>Time Logs</h3>
-          <span className="reports-count">
-            {filteredLogs.length} entries
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <span className="reports-count">
+              {filteredLogs.length} entries
+            </span>
+            <button 
+              className="btn btn-outline btn-sm" 
+              onClick={exportToCSV}
+              disabled={filteredLogs.length === 0}
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+          </div>
         </div>
 
         {filteredLogs.length === 0 ? (

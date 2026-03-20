@@ -13,12 +13,14 @@ import {
 } from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { formatDuration } from '../../lib/utils';
 import './ProjectsPage.css';
 
 export default function ProjectsPage() {
   const { projects, createProject, deleteProject } = useProjects();
   const { profile, company } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
 
   const [showModal, setShowModal] = useState(false);
@@ -48,6 +50,7 @@ export default function ProjectsPage() {
     setIsSubmitting(false);
 
     if (project) {
+      addToast('Project created successfully', 'success');
       setShowModal(false);
       setNewProject({ name: '', client: '', budgeted_hours: '' });
       navigate(`/projects/${project.id}`);
@@ -123,7 +126,10 @@ export default function ProjectsPage() {
                     className="btn btn-ghost btn-icon btn-sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm('Delete this project?')) deleteProject(project.id);
+                      if (confirm('Delete this project?')) {
+                        deleteProject(project.id);
+                        addToast('Project deleted', 'info');
+                      }
                     }}
                   >
                     <Trash2 size={14} />
@@ -183,13 +189,21 @@ export default function ProjectsPage() {
       </div>
 
       {filteredProjects.length === 0 && (
-        <div className="empty-state card">
-          <Search size={48} />
-          <p>
+        <div className="empty-state card animate-fade-in-up">
+          <div className="empty-state-icon-bg">
+            <Search size={48} />
+          </div>
+          <h3>No projects found</h3>
+          <p className="empty-state-desc">
             {searchQuery
-              ? 'No projects match your search.'
-              : 'No projects yet. Create one to get started!'}
+              ? `No results for "${searchQuery}". Try a different project name.`
+              : 'Start your journey by creating your first project and assigning your team members.'}
           </p>
+          {!searchQuery && (
+            <button className="btn btn-accent mt-4" onClick={() => setShowModal(true)}>
+              <Plus size={16} /> Create My First Project
+            </button>
+          )}
         </div>
       )}
 

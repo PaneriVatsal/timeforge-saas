@@ -1,29 +1,30 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  ArrowLeft,
-  UserPlus,
-  UserMinus,
-  Search,
-  Clock,
-  Users,
-  CalendarDays,
-  Target,
-} from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { Pencil, Save, X, ArrowLeft, UserPlus, UserMinus, Search, Clock, Users, CalendarDays, Target } from 'lucide-react';
 import { formatDuration } from '../../lib/utils';
 import './ProjectDetailPage.css';
 
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getProjectById, assignUser, removeUser } = useProjects();
+  const { getProjectById, assignUser, removeUser, updateProject } = useProjects();
   const { profile: currentProfile, companyProfiles } = useAuth();
+  const { addToast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
-
+  const [showEditModal, setShowEditModal] = useState(false);
+  
   const project = getProjectById(id);
+  
+  const [editData, setEditData] = useState({
+    name: project?.name || '',
+    client: project?.client || '',
+    budgeted_hours: project?.budgeted_hours || 0,
+    status: project?.status || 'active'
+  });
 
   if (!project) {
     return (
@@ -37,6 +38,13 @@ export default function ProjectDetailPage() {
       </div>
     );
   }
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    await updateProject(project.id, editData);
+    setShowEditModal(false);
+    addToast('Project updated successfully', 'success');
+  };
 
   const assignedUsers = companyProfiles.filter((u) =>
     project.assigned_users?.includes(u.id)
@@ -72,11 +80,28 @@ export default function ProjectDetailPage() {
               <h2>{project.name}</h2>
               <p className="project-client-label">{project.client || 'No client'}</p>
             </div>
-            <span
-              className={`badge badge-${project.status === 'active' ? 'accent' : 'neutral'}`}
-            >
-              {project.status}
-            </span>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <button 
+                className="btn btn-outline btn-sm" 
+                onClick={() => {
+                  setEditData({
+                    name: project.name,
+                    client: project.client || '',
+                    budgeted_hours: project.budgeted_hours || 0,
+                    status: project.status
+                  });
+                  setShowEditModal(true);
+                }}
+              >
+                <Pencil size={14} />
+                Edit Project
+              </button>
+              <span
+                className={`badge badge-${project.status === 'active' ? 'accent' : 'neutral'}`}
+              >
+                {project.status}
+              </span>
+            </div>
           </div>
 
           <div className="project-meta-grid">
@@ -220,6 +245,77 @@ export default function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Project Modal */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Project</h3>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowEditModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdate} className="modal-form">
+              <div className="form-group">
+                <label>Project Name *</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Client</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={editData.client}
+                  onChange={(e) => setEditData({ ...editData, client: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Budgeted Hours</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={editData.budgeted_hours}
+                  onChange={(e) => setEditData({ ...editData, budgeted_hours: e.target.value })}
+                  min="0"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Status</label>
+                <select 
+                  className="select"
+                  value={editData.status}
+                  onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                >
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-accent">
+                  <Save size={16} />
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

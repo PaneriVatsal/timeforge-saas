@@ -46,6 +46,7 @@ export function TimerProvider({ children }) {
   const [state, dispatch] = useReducer(timerReducer, initialState);
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showManualModal, setShowManualModal] = useState(false);
   const intervalRef = useRef(null);
   const { user, company } = useAuth();
   const { refreshProjects } = useProjects();
@@ -211,6 +212,8 @@ export function TimerProvider({ children }) {
         deleteLog,
         editLog,
         addManualLog,
+        showManualModal,
+        setShowManualModal,
         formattedTime: formatElapsed(state.elapsed_seconds),
         refreshLogs: fetchLogs,
       }}

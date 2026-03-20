@@ -1,0 +1,108 @@
+.fab-container {
+  position: fixed;
+  bottom: calc(var(--bottom-nav-height, 0px) + var(--space-6));
+  right: var(--space-6);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-4);
+  pointer-events: none;
+}
+
+.fab-main-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px var(--color-accent-glow);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-spring), background var(--duration-fast) var(--ease-out);
+  border: none;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.fab-main-btn:active {
+  transform: scale(0.9);
+}
+
+.fab-active {
+  background: var(--color-surface-elevated);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-glow);
+}
+
+.fab-options {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  pointer-events: auto;
+}
+
+.fab-option-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.fab-option-label {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-elevated);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.fab-option-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  color: white;
+}
+
+.manual-bg {
+  background: var(--color-primary);
+}
+
+.start-bg {
+  background: var(--color-accent);
+}
+
+/* Hide on desktop */
+@media (min-width: 1025px) {
+  .fab-container {
+    display: none;
+  }
+}
+
+/* Adjust for smaller screens */
+@media (max-width: 640px) {
+  .fab-container {
+    bottom: calc(var(--bottom-nav-height, 72px) + var(--space-4));
+    right: var(--space-4);
+  }
+  
+  .fab-main-btn {
+    width: 48px;
+    height: 48px;
+  }
+}

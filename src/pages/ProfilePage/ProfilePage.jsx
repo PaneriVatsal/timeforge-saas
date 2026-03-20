@@ -210,6 +210,53 @@ export default function ProfilePage() {
             </p>
           </div>
         </div>
+
+        {/* Company Settings (Admin Only) */}
+        {profile?.role === 'Admin' && (
+          <div className="card profile-section animate-fade-in-up stagger-3">
+            <div className="section-header">
+              <h3>
+                <Building2 size={18} />
+                Company Settings
+              </h3>
+            </div>
+            <div className="profile-form">
+              <div className="form-group">
+                <label>Company Name</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={company?.name || ''}
+                  disabled
+                />
+                <span className="form-hint-text">Company identity is locked to your subscription.</span>
+              </div>
+              
+              <div className="form-group">
+                <label>Weekly Hour Limit</label>
+                <input
+                  type="number"
+                  className="input"
+                  defaultValue="40"
+                />
+                <span className="form-hint-text">Target hours per employee per week.</span>
+              </div>
+
+              <div className="form-group">
+                <label>Time Tracking Policy</label>
+                <select className="select">
+                  <option>Strict (Timer only)</option>
+                  <option>Flexible (Timer & Manual)</option>
+                  <option>Open (Historical edits allowed)</option>
+                </select>
+              </div>
+
+              <button className="btn btn-outline" style={{ marginTop: 'var(--space-2)' }}>
+                Update Company Policy
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
