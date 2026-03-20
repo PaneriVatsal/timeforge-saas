@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Search, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NotificationPanel from '../NotificationPanel/NotificationPanel';
 import './TopHeader.css';
@@ -13,7 +13,7 @@ const pageTitles = {
 
 export default function TopHeader() {
   const location = useLocation();
-  const { profile } = useAuth();
+  const { profile, logout } = useAuth();
 
   // Handle dynamic routes like /projects/:id
   const basePath = '/' + location.pathname.split('/').filter(Boolean)[0];
@@ -47,6 +47,9 @@ export default function TopHeader() {
         <div className="header-greeting">
           <span>Welcome, <strong>{profile?.full_name?.split(' ')[0] || 'User'}</strong></span>
         </div>
+        <button className="header-logout-btn" onClick={logout} title="Logout">
+          <LogOut size={18} />
+        </button>
       </div>
     </header>
   );

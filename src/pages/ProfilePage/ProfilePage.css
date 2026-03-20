@@ -7,6 +7,7 @@
 /* Hero Card */
 .profile-hero {
   padding: var(--space-8);
+  position: relative;
 }
 
 .profile-avatar-section {
@@ -260,5 +261,26 @@
 
   .pref-item {
     padding: var(--space-4);
+  }
+
+  .profile-logout-btn {
+    margin-top: var(--space-6);
+    width: 100%;
+  }
+}
+
+.profile-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+@media (min-width: 769px) {
+  .profile-logout-btn {
+    position: absolute;
+    top: var(--space-8);
+    right: var(--space-8);
+    width: auto;
   }
 }

@@ -10,13 +10,14 @@ import {
   Sun,
   Bell,
   Globe,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
-  const { user, profile, company } = useAuth();
+  const { user, profile, company, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [displayName, setDisplayName] = useState(profile?.full_name || '');
   const [saved, setSaved] = useState(false);
@@ -61,6 +62,9 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+        <button className="btn btn-danger profile-logout-btn" onClick={logout}>
+          <LogOut size={16} /> Logout
+        </button>
       </div>
 
       <div className="profile-grid">
