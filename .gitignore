@@ -39,17 +39,29 @@ dist-ssr/
 main_served.js
 debug_output.txt
 curl_output.html
+vercel_output.json
+vercel_output.txt
+tput.txt
+*.txt
 
-# Local scripts and tests
+# Local scripts and tests (Keep the original list but add more)
 check-db.js
 debug-user.js
 test-insert.js
 test-register.js
 verify-marker.js
 seed-db.js
+add-envs.js
+debug-*.js
+test-*.js
 
 # Database setup scripts (keep separate from source)
 production_setup.sql
 seed_data.sql
 supabase_automations.sql
+
+# Shell scripts (one-offs)
+readonly-query.sh
+*.sh
+!scripts/*.sh
 
