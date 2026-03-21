@@ -1,3 +1,6 @@
+# Claude Agent Configurations (Keep General-Purpose)
+.claude/
+
 # Logs
 logs
 *.log
