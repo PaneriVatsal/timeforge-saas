@@ -15,7 +15,7 @@ export function ProjectProvider({ children }) {
 
     const { data: projectsData, error } = await supabase
       .from('projects')
-      .select('*, project_assignments(user_id), time_logs(duration_minutes)')
+      .select('*, project_assignments(user_id, role), time_logs(duration_minutes)')
       .eq('company_id', company.id);
 
     if (error) {
@@ -24,6 +24,7 @@ export function ProjectProvider({ children }) {
       // Map assignments and calculate total hours
       const mappedProjects = projectsData.map(p => ({
         ...p,
+        assignments: p.project_assignments || [],
         assigned_users: (p.project_assignments || []).map(a => a.user_id),
         logged_hours: (p.time_logs || []).reduce((sum, log) => sum + (log.duration_minutes || 0), 0) / 60
       }));
@@ -46,6 +47,7 @@ export function ProjectProvider({ children }) {
         client: data.client || '',
         budgeted_hours: Number(data.budgeted_hours) || 0,
         company_id: company.id,
+        leader_id: data.leader_id || null,
         status: 'active',
       })
       .select()
@@ -56,7 +58,22 @@ export function ProjectProvider({ children }) {
       return null;
     }
 
-    const projectWithAssignments = { ...newProject, assigned_users: [] };
+    if (data.leader_id) {
+      await supabase
+        .from('project_assignments')
+        .insert({ 
+          project_id: newProject.id, 
+          user_id: data.leader_id,
+          role: 'Project Lead' 
+        });
+    }
+
+    const projectWithAssignments = { 
+      ...newProject, 
+      assignments: data.leader_id ? [{ user_id: data.leader_id, role: 'Project Lead' }] : [],
+      assigned_users: data.leader_id ? [data.leader_id] : [],
+      logged_hours: 0 
+    };
     setProjects((prev) => [projectWithAssignments, ...prev]);
     return projectWithAssignments;
   }, [company]);
@@ -85,16 +102,17 @@ export function ProjectProvider({ children }) {
 
     if (error) {
       console.error('Error deleting project:', error);
-      return;
+      return false;
     }
 
     setProjects((prev) => prev.filter((p) => p.id !== id));
+    return true;
   }, []);
 
-  const assignUser = useCallback(async (projectId, userId) => {
+  const assignUser = useCallback(async (projectId, userId, role = 'Team Member') => {
     const { error } = await supabase
       .from('project_assignments')
-      .insert({ project_id: projectId, user_id: userId });
+      .insert({ project_id: projectId, user_id: userId, role });
 
     if (error) {
       console.error('Error assigning user:', error);
@@ -105,7 +123,11 @@ export function ProjectProvider({ children }) {
       prev.map((p) => {
         if (p.id !== projectId) return p;
         if (p.assigned_users.includes(userId)) return p;
-        return { ...p, assigned_users: [...p.assigned_users, userId] };
+        return { 
+          ...p, 
+          assigned_users: [...p.assigned_users, userId],
+          assignments: [...(p.assignments || []), { user_id: userId, role }]
+        };
       })
     );
   }, []);
@@ -125,7 +147,11 @@ export function ProjectProvider({ children }) {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        return { ...p, assigned_users: p.assigned_users.filter((id) => id !== userId) };
+        return { 
+          ...p, 
+          assigned_users: p.assigned_users.filter((id) => id !== userId),
+          assignments: (p.assignments || []).filter((a) => a.user_id !== userId)
+        };
       })
     );
   }, []);

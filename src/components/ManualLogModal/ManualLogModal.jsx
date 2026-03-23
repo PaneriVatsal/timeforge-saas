@@ -36,7 +36,8 @@ export default function ManualLogModal() {
       projectId: manualData.projectId,
       description: manualData.description,
       durationMinutes: totalMinutes,
-      date: manualData.date
+      date: manualData.date,
+      isPastWork: manualData.isPastWork
     });
 
     setIsSubmitting(false);

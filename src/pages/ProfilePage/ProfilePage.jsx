@@ -17,17 +17,47 @@ import { useTheme } from '../../context/ThemeContext';
 import './ProfilePage.css';
 
 export default function ProfilePage() {
-  const { user, profile, company, logout } = useAuth();
+  const { user, profile, company, logout, updatePassword } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [displayName, setDisplayName] = useState(profile?.full_name || '');
   const [saved, setSaved] = useState(false);
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [timerReminders, setTimerReminders] = useState(true);
+  
+  // Password Update State
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState({ success: false, message: '' });
+  const [profileSaving, setProfileSaving] = useState(false);
 
   const handleSave = (e) => {
     e.preventDefault();
+    setProfileSaving(true);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setTimeout(() => {
+      setSaved(false);
+      setProfileSaving(false);
+    }, 2000);
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      setPasswordStatus({ success: false, message: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordStatus({ success: false, message: '' });
+
+    const result = await updatePassword(newPassword);
+    if (result.success) {
+      setPasswordStatus({ success: true, message: 'Password updated successfully!' });
+      setNewPassword('');
+    } else {
+      setPasswordStatus({ success: false, message: result.message });
+    }
+    setPasswordLoading(false);
   };
 
   const initials = profile?.full_name
@@ -211,9 +241,44 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Security */}
+        <div className="card profile-section animate-fade-in-up stagger-3">
+          <div className="section-header">
+            <h3>
+              <Shield size={18} />
+              Security
+            </h3>
+          </div>
+          <form className="profile-form" onSubmit={handleUpdatePassword}>
+            <div className="form-group">
+              <label>New Password</label>
+              <input
+                type="password"
+                className="input"
+                placeholder="Minimum 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                id="profile-password"
+              />
+            </div>
+            {passwordStatus.message && (
+              <div className={`form-message ${passwordStatus.success ? 'text-accent' : 'text-danger'}`} style={{ fontSize: '0.9rem', marginBottom: 'var(--space-4)' }}>
+                {passwordStatus.message}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn btn-outline"
+              disabled={passwordLoading || !newPassword}
+            >
+              {passwordLoading ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
+        </div>
+
         {/* Company Settings (Admin Only) */}
         {profile?.role === 'Admin' && (
-          <div className="card profile-section animate-fade-in-up stagger-3">
+          <div className="card profile-section animate-fade-in-up stagger-3" style={{ animationDelay: '0.4s' }}>
             <div className="section-header">
               <h3>
                 <Building2 size={18} />

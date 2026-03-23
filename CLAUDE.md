@@ -22,3 +22,4 @@ TimeForge — A premium, weightless Project & Timesheet SaaS built with React, S
 - `npm run dev` — Start dev environment
 - `npm run build` — Production build
 - `check-db.js` — Database health check
+- `./start-claude.ps1` — Start Claude CLI locally (Ollama/Qwen)

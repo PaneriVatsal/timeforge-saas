@@ -165,8 +165,9 @@ export function TimerProvider({ children }) {
   const addManualLog = useCallback(async (data) => {
     if (!user || !company) return null;
 
-    // Mark as manual entry for UI detection
-    const description = `[M] ${data.description || 'Manual entry'}`;
+    // Mark as manual entry for UI detection, and optionally past work
+    const marker = data.isPastWork ? '[M/P]' : '[M]';
+    const description = `${marker} ${data.description || 'Manual entry'}`;
 
     const { data: newLog, error } = await supabase
       .from('time_logs')

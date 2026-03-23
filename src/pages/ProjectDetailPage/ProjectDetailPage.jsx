@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,15 @@ export default function ProjectDetailPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [userRoles, setUserRoles] = useState({}); // userId -> selectedRole mapping
+
+  const PROJECT_ROLES = [
+    'Team Member',
+    'Team Lead',
+    'Project Manager',
+    'PMO',
+    'Project Lead'
+  ];
   
   const project = getProjectById(id);
   
@@ -46,9 +55,14 @@ export default function ProjectDetailPage() {
     addToast('Project updated successfully', 'success');
   };
 
-  const assignedUsers = companyProfiles.filter((u) =>
-    project.assigned_users?.includes(u.id)
-  );
+  const assignedTeam = useMemo(() => {
+    if (!project?.assignments) return [];
+    return project.assignments.map(a => {
+      const user = companyProfiles.find(u => u.id === a.user_id);
+      if (!user) return null;
+      return { ...user, projectRole: a.role || 'Team Member' };
+    }).filter(Boolean);
+  }, [project?.assignments, companyProfiles]);
 
   const availableUsers = companyProfiles.filter(
     (u) =>
@@ -122,7 +136,7 @@ export default function ProjectDetailPage() {
             <div className="meta-item">
               <Users size={16} />
               <div>
-                <span className="meta-value">{assignedUsers.length}</span>
+                <span className="meta-value">{assignedTeam.length}</span>
                 <span className="meta-label">Team Members</span>
               </div>
             </div>
@@ -158,25 +172,25 @@ export default function ProjectDetailPage() {
                 <Users size={18} />
                 Project Team
               </h3>
-              <span className="badge badge-neutral">{assignedUsers.length}</span>
+              <span className="badge badge-neutral">{assignedTeam.length}</span>
             </div>
 
             <div className="team-list">
-              {assignedUsers.length === 0 ? (
+              {assignedTeam.length === 0 ? (
                 <div className="empty-state" style={{ padding: '32px 16px' }}>
                   <Users size={32} />
                   <p>No team members assigned yet</p>
                 </div>
               ) : (
-                assignedUsers.map((u) => (
+                assignedTeam.map((u) => (
                   <div key={u.id} className="team-member">
                     <div className="member-avatar">{u.full_name?.charAt(0) || 'U'}</div>
                     <div className="member-info">
                       <span className="member-name">{u.full_name}</span>
                       <span className="member-email">{u.email}</span>
                     </div>
-                    <span className={`badge badge-${u.role === 'Admin' ? 'accent' : 'neutral'}`}>
-                      {u.role}
+                    <span className="badge badge-neutral">
+                      {u.projectRole}
                     </span>
                     <button
                       className="btn btn-ghost btn-icon btn-sm"
@@ -223,21 +237,36 @@ export default function ProjectDetailPage() {
                 </div>
               ) : (
                 availableUsers.map((u) => (
-                  <div key={u.id} className="available-member">
-                    <div className="member-avatar member-avatar-muted">
-                      {u.full_name?.charAt(0) || 'U'}
+                  <div key={u.id} className="available-member-row">
+                    <div className="available-member">
+                      <div className="member-avatar member-avatar-muted">
+                        {u.full_name?.charAt(0) || 'U'}
+                      </div>
+                      <div className="member-info">
+                        <span className="member-name">{u.full_name}</span>
+                        <span className="member-email">{u.email}</span>
+                      </div>
                     </div>
-                    <div className="member-info">
-                      <span className="member-name">{u.full_name}</span>
-                      <span className="member-email">{u.email}</span>
+                    <div className="assign-controls">
+                      <select
+                        className="select select-sm role-select"
+                        value={userRoles[u.id] || 'Team Member'}
+                        onChange={(e) => setUserRoles({ ...userRoles, [u.id]: e.target.value })}
+                        id={`role-select-${u.id}`}
+                      >
+                        {PROJECT_ROLES.map(role => (
+                          <option key={role} value={role}>{role}</option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-accent btn-sm"
+                        onClick={() => assignUser(project.id, u.id, userRoles[u.id] || 'Team Member')}
+                        id={`assign-btn-${u.id}`}
+                      >
+                        <UserPlus size={14} />
+                        Assign
+                      </button>
                     </div>
-                    <button
-                      className="btn btn-accent btn-sm"
-                      onClick={() => assignUser(project.id, u.id)}
-                    >
-                      <UserPlus size={14} />
-                      Assign
-                    </button>
                   </div>
                 ))
               )}

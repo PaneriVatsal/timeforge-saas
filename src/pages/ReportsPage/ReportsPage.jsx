@@ -89,13 +89,13 @@ export default function ReportsPage() {
   const getUserName = (id) => companyProfiles.find((u) => u.id === id)?.full_name || 'Unknown';
 
   const exportToCSV = () => {
-    const headers = ['Project', 'Employee', 'Description', 'Date', 'Duration (min)'];
+    const headers = ['Project', 'Employee', 'Description', 'Date', 'Duration (hours)'];
     const rows = filteredLogs.map((log) => [
       getProjectName(log.project_id),
       getUserName(log.user_id),
       log.description?.replace(/,/g, ' '), // Basic CSV escaping
       log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date,
-      log.duration_minutes,
+      (log.duration_minutes / 60).toFixed(2),
     ]);
 
     const csvContent = [headers, ...rows].map((e) => e.join(',')).join('\n');
@@ -271,11 +271,13 @@ export default function ReportsPage() {
                 </thead>
                 <tbody>
                   {filteredLogs.map((log) => {
-                    const isManual = log.description?.startsWith('[M]') || 
+                    const isPastWork = log.description?.startsWith('[M/P]');
+                    const isManual = isPastWork || log.description?.startsWith('[M]') || 
                                     (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
-                    const cleanDescription = (log.description?.startsWith('[M]') 
-                      ? log.description.substring(4) // Remove '[M] '
-                      : log.description) || 'Untitled task';
+                    
+                    let cleanDescription = log.description || 'Untitled task';
+                    if (isPastWork) cleanDescription = cleanDescription.substring(6);
+                    else if (log.description?.startsWith('[M]')) cleanDescription = cleanDescription.substring(4);
 
                     return (
                       <tr key={log.id}>
@@ -294,7 +296,11 @@ export default function ReportsPage() {
                         </td>
                         <td className="report-desc">
                           {cleanDescription}
-                          {isManual && <span className="badge badge-neutral badge-xs ml-2">Manual</span>}
+                          {isPastWork ? (
+                            <span className="badge badge-warning badge-xs ml-2">Past Work</span>
+                          ) : isManual ? (
+                            <span className="badge badge-neutral badge-xs ml-2">Manual</span>
+                          ) : null}
                         </td>
                         <td className="report-date">{log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date}</td>
                         <td>
@@ -312,11 +318,13 @@ export default function ReportsPage() {
             {/* Mobile View List */}
             <div className="reports-mobile-list">
               {filteredLogs.map((log) => {
-                const isManual = log.description?.startsWith('[M]') || 
+                const isPastWork = log.description?.startsWith('[M/P]');
+                const isManual = isPastWork || log.description?.startsWith('[M]') || 
                                   (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
-                const cleanDescription = (log.description?.startsWith('[M]') 
-                  ? log.description.substring(4) // Remove '[M] '
-                  : log.description) || 'Untitled task';
+                
+                let cleanDescription = log.description || 'Untitled task';
+                if (isPastWork) cleanDescription = cleanDescription.substring(6);
+                else if (log.description?.startsWith('[M]')) cleanDescription = cleanDescription.substring(4);
                 
                 return (
                   <div key={log.id} className="mobile-report-card">
@@ -325,7 +333,11 @@ export default function ReportsPage() {
                         {getProjectName(log.project_id)}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {isManual && <span className="badge badge-neutral badge-xs">Manual</span>}
+                        {isPastWork ? (
+                          <span className="badge badge-warning badge-xs">Past Work</span>
+                        ) : isManual ? (
+                          <span className="badge badge-neutral badge-xs">Manual</span>
+                        ) : null}
                         <span className="m-report-duration">
                           {formatDuration(log.duration_minutes)}
                         </span>

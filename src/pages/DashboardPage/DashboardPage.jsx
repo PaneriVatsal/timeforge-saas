@@ -221,11 +221,15 @@ export default function DashboardPage() {
   };
 
   const openEditModal = (log) => {
-    // Detect if manual
+    // Detect if manual or past work
     const isManual = log.description?.startsWith('[M]');
-    const cleanDesc = isManual ? log.description.substring(4) : log.description;
+    const isPastWork = log.description?.startsWith('[M/P]');
     
-    setEditingLog({ ...log, isManual });
+    let cleanDesc = log.description || '';
+    if (isPastWork) cleanDesc = cleanDesc.substring(6);
+    else if (isManual) cleanDesc = cleanDesc.substring(4);
+    
+    setEditingLog({ ...log, isManual, isPastWork });
     setEditDesc(cleanDesc);
     setEditHours(Math.floor(log.duration_minutes / 60).toString());
     setEditMinutes((log.duration_minutes % 60).toString());
@@ -510,11 +514,13 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {todayLogs.map((log, i) => {
-                  const isManual = log.description?.startsWith('[M]') || 
+                  const isPastWork = log.description?.startsWith('[M/P]');
+                  const isManual = isPastWork || log.description?.startsWith('[M]') || 
                                   (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);
-                  const cleanDescription = log.description?.startsWith('[M]') 
-                    ? log.description.substring(4) // Remove '[M] '
-                    : log.description || 'Untitled task';
+                  
+                  let cleanDescription = log.description || 'Untitled task';
+                  if (isPastWork) cleanDescription = cleanDescription.substring(6);
+                  else if (log.description?.startsWith('[M]')) cleanDescription = cleanDescription.substring(4);
 
                   return (
                     <tr key={log.id} className="animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
@@ -527,9 +533,11 @@ export default function DashboardPage() {
                       <td>
                         <div className="log-duration-cell">
                           <span className="log-duration">{formatDuration(log.duration_minutes)}</span>
-                          {isManual && (
+                          {isPastWork ? (
+                            <span className="badge badge-warning badge-xs">Past Work</span>
+                          ) : isManual ? (
                             <span className="badge badge-neutral badge-xs">Manual</span>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                       <td>

@@ -247,6 +247,30 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const updatePassword = useCallback(async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('[Auth] Update password error:', err);
+      return { success: false, message: err.message };
+    }
+  }, []);
+
+  const resetPassword = useCallback(async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (err) {
+      console.error('[Auth] Reset password error:', err);
+      return { success: false, message: err.message };
+    }
+  }, []);
+
   const refreshUserData = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
@@ -348,7 +372,7 @@ export function AuthProvider({ children }) {
   }, [loadUserData]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, inviteUser, cancelInvitation, signInWithSocial, refreshUserData }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, inviteUser, cancelInvitation, signInWithSocial, refreshUserData, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

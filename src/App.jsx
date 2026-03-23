@@ -7,6 +7,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import AppLayout from './components/AppLayout/AppLayout';
 import LoginPage from './pages/LoginPage/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage/ProjectDetailPage';
@@ -74,6 +76,18 @@ function AppRoutes() {
             <RegisterPage />
           </AuthRoute>
         }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <AuthRoute>
+            <ForgotPasswordPage />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
       />
       <Route
         element={
