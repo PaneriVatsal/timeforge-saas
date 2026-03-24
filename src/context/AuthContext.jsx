@@ -345,6 +345,15 @@ export function AuthProvider({ children }) {
   const cancelInvitation = useCallback(async (invitationId) => {
     console.log('[Auth] Attempting to cancel invitation:', invitationId);
     try {
+      // 1. Pre-emptively update state to remove it instantly
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: {
+          ...state,
+          invitations: state.invitations.filter(i => i.id !== invitationId)
+        }
+      });
+
       const { error } = await supabase
         .from('invitations')
         .delete()
@@ -352,17 +361,21 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error('[Auth] Cancel invitation database error:', error);
+        // On error, refresh to restore correct state
+        refreshUserData();
         return false;
       }
 
       console.log('[Auth] Invitation cancelled successfully');
-      await refreshUserData();
+      refreshUserData();
       return true;
     } catch (err) {
       console.error('[Auth] Cancel invitation exception:', err);
+      // On error, refresh to restore correct state
+      refreshUserData();
       return false;
     }
-  }, [refreshUserData]);
+  }, [state, refreshUserData]);
 
   useEffect(() => {
     // 0. Safety Timeout — Never stay loading forever
