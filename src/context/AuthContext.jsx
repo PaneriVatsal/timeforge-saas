@@ -281,15 +281,34 @@ export function AuthProvider({ children }) {
   const inviteUser = useCallback(async (email, role) => {
     if (!state.company || !state.profile) {
       console.error('[Auth] Invite failed: Missing company or profile', { company: state.company, profile: state.profile });
-      return false;
+      return { success: false, message: 'Your session has expired. Please log in again.' };
     }
 
-    console.log('[Auth] Attempting to invite:', email, role);
+    const cleanEmail = email.toLowerCase().trim();
+    console.log('[Auth] Attempting to invite:', cleanEmail, role);
     try {
+      // 1. Check for duplicate pending invite
+      const { data: existingInvite, error: checkError } = await supabase
+        .from('invitations')
+        .select('id')
+        .eq('email', cleanEmail)
+        .eq('company_id', state.company.id)
+        .eq('status', 'pending')
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('[Auth] Duplicate check error:', checkError);
+      }
+
+      if (existingInvite) {
+        return { success: false, message: `An invitation for ${email} is already pending.` };
+      }
+
+      // 2. Perform the insert
       const { data, error } = await supabase
         .from('invitations')
         .insert({
-          email,
+          email: cleanEmail,
           role,
           company_id: state.company.id,
           invited_by: state.profile.id,
@@ -300,17 +319,28 @@ export function AuthProvider({ children }) {
 
       if (error) {
         console.error('[Auth] Invite database error:', error);
-        return false;
+        return { success: false, message: 'Database error while sending invite: ' + error.message };
       }
 
       console.log('[Auth] Invite successful:', data);
-      await refreshUserData();
-      return true;
+      
+      // 3. Immediately update local state for better UI responsiveness
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: {
+          ...state,
+          invitations: [...state.invitations, data]
+        }
+      });
+
+      // 4. Trigger background refresh to ensure sync
+      refreshUserData();
+      return { success: true };
     } catch (err) {
       console.error('[Auth] Invite exception:', err);
-      return false;
+      return { success: false, message: 'An unexpected error occurred.' };
     }
-  }, [state.company, state.profile, refreshUserData]);
+  }, [state.company, state.profile, state.invitations, refreshUserData]);
 
   const cancelInvitation = useCallback(async (invitationId) => {
     console.log('[Auth] Attempting to cancel invitation:', invitationId);

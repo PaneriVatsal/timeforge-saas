@@ -724,3 +724,28 @@ ul, ol {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ---- Alerts & Utilities ---- */
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.alert-danger {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid hsla(0, 72%, 51%, 0.2);
+}
+
+.alert-success {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  border: 1px solid hsla(142, 71%, 45%, 0.2);
+}
+
+.mb-4 { margin-bottom: var(--space-4); }

@@ -20,17 +20,21 @@ export default function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('Employee');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleInvite = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const success = await inviteUser(inviteEmail, inviteRole);
+    setErrorMessage('');
+    
+    const result = await inviteUser(inviteEmail, inviteRole);
     setIsSubmitting(false);
     
-    if (success) {
+    if (result.success) {
       setInviteEmail('');
       setShowInviteModal(false);
-      // In a real app, refresh invitations
+    } else {
+      setErrorMessage(result.message);
     }
   };
 
@@ -145,6 +149,12 @@ export default function TeamPage() {
               </button>
             </div>
             <form onSubmit={handleInvite} className="modal-form">
+              {errorMessage && (
+                <div className="alert alert-danger mb-4">
+                  <ShieldAlert size={14} />
+                  {errorMessage}
+                </div>
+              )}
               <div className="form-group">
                 <label>Email Address</label>
                 <input 
