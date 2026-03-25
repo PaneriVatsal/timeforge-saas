@@ -377,6 +377,44 @@ export function AuthProvider({ children }) {
     }
   }, [state, refreshUserData]);
 
+  const removeMember = useCallback(async (memberId) => {
+    if (memberId === state.profile.id) {
+      alert("You cannot remove yourself.");
+      return false;
+    }
+
+    console.log('[Auth] Attempting to remove member:', memberId);
+    try {
+      // Optimistic update
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: {
+          ...state,
+          companyProfiles: state.companyProfiles.filter(p => p.id !== memberId)
+        }
+      });
+
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) {
+        console.error('[Auth] Remove member database error:', error);
+        refreshUserData();
+        return false;
+      }
+
+      console.log('[Auth] Member removed successfully');
+      refreshUserData();
+      return true;
+    } catch (err) {
+      console.error('[Auth] Remove member exception:', err);
+      refreshUserData();
+      return false;
+    }
+  }, [state, refreshUserData]);
+
   useEffect(() => {
     // 0. Safety Timeout — Never stay loading forever
     const timeout = setTimeout(() => {
@@ -415,7 +453,7 @@ export function AuthProvider({ children }) {
   }, [loadUserData]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, inviteUser, cancelInvitation, signInWithSocial, refreshUserData, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, inviteUser, cancelInvitation, removeMember, signInWithSocial, refreshUserData, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );

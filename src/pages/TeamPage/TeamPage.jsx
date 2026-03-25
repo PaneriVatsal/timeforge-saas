@@ -15,12 +15,13 @@ import {
 import './TeamPage.css';
 
 export default function TeamPage() {
-  const { profile, company, companyProfiles, invitations, inviteUser, cancelInvitation } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('Employee');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const { profile, company, companyProfiles, invitations, inviteUser, cancelInvitation, removeMember } = useAuth();
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -41,6 +42,13 @@ export default function TeamPage() {
   const handleCancelInvite = async (invitationId) => {
     if (confirm('Are you sure you want to cancel this invitation?')) {
       await cancelInvitation(invitationId);
+    }
+  };
+
+  const handleRemoveMember = async (memberId) => {
+    if (confirm('Are you sure you want to remove this member? This will delete their access to the company.')) {
+      await removeMember(memberId);
+      setActiveDropdown(null);
     }
   };
 
@@ -95,9 +103,27 @@ export default function TeamPage() {
                 </div>
               </div>
               <div className="member-actions">
-                <button className="btn btn-ghost btn-icon btn-sm">
-                  <MoreHorizontal size={16} />
-                </button>
+                {profile.role === 'Admin' && member.id !== profile.id && (
+                  <>
+                    <button 
+                      className={`btn btn-ghost btn-icon btn-sm ${activeDropdown === member.id ? 'active' : ''}`}
+                      onClick={() => setActiveDropdown(activeDropdown === member.id ? null : member.id)}
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
+                    {activeDropdown === member.id && (
+                      <div className="dropdown-menu">
+                        <button 
+                          className="dropdown-item text-danger"
+                          onClick={() => handleRemoveMember(member.id)}
+                        >
+                          <Trash2 size={14} />
+                          Remove Member
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           ))}
