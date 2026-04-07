@@ -561,8 +561,8 @@ ul, ol {
   animation: fadeIn var(--duration-normal) var(--ease-out) both;
 }
 
-.animate-slide-in-left {
-  animation: slideInLeft var(--duration-slow) var(--ease-out) both;
+.animate-modal-enter {
+  animation: modalContentIn var(--duration-slow) var(--ease-spring) both;
 }
 
 /* Staggered entrance delays */

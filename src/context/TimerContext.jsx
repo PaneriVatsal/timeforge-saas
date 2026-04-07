@@ -9,6 +9,8 @@ const initialState = {
   is_running: false,
   start_time: null,
   active_project_id: '',
+  active_phase_id: '',
+  active_task_id: '',
   active_task_description: '',
   elapsed_seconds: 0,
 };
@@ -21,6 +23,8 @@ function timerReducer(state, action) {
         is_running: true,
         start_time: Date.now(),
         active_project_id: action.payload.projectId,
+        active_phase_id: action.payload.phaseId || '',
+        active_task_id: action.payload.taskId || '',
         active_task_description: action.payload.description,
         elapsed_seconds: 0,
       };
@@ -34,7 +38,11 @@ function timerReducer(state, action) {
           : 0,
       };
     case 'SET_PROJECT':
-      return { ...state, active_project_id: action.payload };
+      return { ...state, active_project_id: action.payload, active_phase_id: '', active_task_id: '' };
+    case 'SET_PHASE':
+      return { ...state, active_phase_id: action.payload, active_task_id: '' };
+    case 'SET_TASK':
+      return { ...state, active_task_id: action.payload };
     case 'SET_DESCRIPTION':
       return { ...state, active_task_description: action.payload };
     default:
@@ -90,8 +98,8 @@ export function TimerProvider({ children }) {
     };
   }, [state.is_running]);
 
-  const startTimer = useCallback((projectId, description) => {
-    dispatch({ type: 'START', payload: { projectId, description } });
+  const startTimer = useCallback((projectId, description, phaseId = '', taskId = '') => {
+    dispatch({ type: 'START', payload: { projectId, description, phaseId, taskId } });
   }, []);
 
   const stopTimer = useCallback(async () => {
@@ -105,6 +113,8 @@ export function TimerProvider({ children }) {
       .insert({
         user_id: user.id,
         project_id: state.active_project_id,
+        phase_id: state.active_phase_id || null,
+        task_id: state.active_task_id || null,
         description: state.active_task_description || 'Untitled task',
         duration_minutes: durationMinutes,
         company_id: company.id,
@@ -122,13 +132,23 @@ export function TimerProvider({ children }) {
     refreshProjects();
     return newLog;
   }, [state, user, company, refreshProjects]);
+
   const setProject = useCallback((projectId) => {
     dispatch({ type: 'SET_PROJECT', payload: projectId });
+  }, []);
+
+  const setPhase = useCallback((phaseId) => {
+    dispatch({ type: 'SET_PHASE', payload: phaseId });
+  }, []);
+
+  const setTask = useCallback((taskId) => {
+    dispatch({ type: 'SET_TASK', payload: taskId });
   }, []);
 
   const setDescription = useCallback((description) => {
     dispatch({ type: 'SET_DESCRIPTION', payload: description });
   }, []);
+
 
   const deleteLog = useCallback(async (logId) => {
     const { error } = await supabase
@@ -174,6 +194,8 @@ export function TimerProvider({ children }) {
       .insert({
         user_id: user.id,
         project_id: data.projectId,
+        phase_id: data.phaseId || null,
+        task_id: data.taskId || null,
         description,
         duration_minutes: Number(data.durationMinutes) || 0,
         company_id: company.id,
@@ -209,8 +231,11 @@ export function TimerProvider({ children }) {
         startTimer,
         stopTimer,
         setProject,
+        setPhase,
+        setTask,
         setDescription,
         deleteLog,
+        active_task_id: state.active_task_id,
         editLog,
         addManualLog,
         showManualModal,

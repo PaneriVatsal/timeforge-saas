@@ -65,6 +65,8 @@ export default function DashboardPage() {
   const {
     is_running,
     active_project_id,
+    active_phase_id,
+    active_task_id,
     active_task_description,
     formattedTime,
     logs,
@@ -72,6 +74,8 @@ export default function DashboardPage() {
     startTimer,
     stopTimer,
     setProject,
+    setPhase,
+    setTask,
     setDescription,
     deleteLog,
     editLog,
@@ -83,6 +87,8 @@ export default function DashboardPage() {
   const { addToast } = useToast();
   
   const [selectedProject, setSelectedProject] = useState(active_project_id || '');
+  const [selectedPhase, setSelectedPhase] = useState(active_phase_id || '');
+  const [selectedTask, setSelectedTask] = useState(active_task_id || '');
   const [taskDesc, setTaskDesc] = useState(active_task_description || '');
 
   // Edit modal
@@ -108,7 +114,7 @@ export default function DashboardPage() {
 
   const today = new Date().toISOString().split('T')[0];
   const todayLogs = useMemo(
-    () => logs.filter((l) => l.user_id === profile?.id && (l.created_at?.startsWith(today) || l.date === today)),
+    () => (logs || []).filter((l) => l.user_id === profile?.id && (l.created_at?.startsWith(today) || l.date === today)),
     [logs, profile, today]
   );
 
@@ -123,17 +129,17 @@ export default function DashboardPage() {
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekStr = weekAgo.toISOString().split('T')[0];
-    return logs.filter((l) => l.user_id === profile?.id && (l.created_at >= weekStr || l.date >= weekStr));
+    return (logs || []).filter((l) => l.user_id === profile?.id && (l.created_at >= weekStr || l.date >= weekStr));
   }, [logs, profile]);
 
   const weekTotalMinutes = useMemo(
-    () => weekLogs.reduce((sum, l) => sum + l.duration_minutes, 0),
+    () => (weekLogs || []).reduce((sum, l) => sum + l.duration_minutes, 0),
     [weekLogs]
   );
 
   // Stats calculation
   const stats = useMemo(() => {
-    const activeProjects = allProjects.filter(p => p.status === 'active').length;
+    const activeProjects = (allProjects || []).filter(p => p.status === 'active').length;
     const dailyGoal = 480; // 8h
     const productivityPct = Math.min(100, Math.round((totalTodayMinutes / dailyGoal) * 100));
 
@@ -147,7 +153,7 @@ export default function DashboardPage() {
 
   const suggestedTasks = useMemo(() => {
     if (!selectedProject) return [];
-    const tasks = logs
+    const tasks = (logs || [])
       .filter((l) => l.project_id === selectedProject)
       .map((l) => (l.description?.startsWith('[M] ') ? l.description.substring(4) : l.description))
       .filter(Boolean);
@@ -157,8 +163,9 @@ export default function DashboardPage() {
   const { trackedThisWeek, productivityPct, activeProjects: activeProjectsCount } = stats;
 
   const assignedProjects = useMemo(() => {
-    if (profile?.role === 'Admin') return allProjects.filter((p) => p.status === 'active');
-    return allProjects.filter(
+    const projects = allProjects || [];
+    if (profile?.role === 'Admin') return projects.filter((p) => p.status === 'active');
+    return projects.filter(
       (p) => p.assigned_users?.includes(profile?.id) && p.status === 'active'
     );
   }, [allProjects, profile]);
@@ -172,7 +179,7 @@ export default function DashboardPage() {
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
-      const dayMinutes = weekLogs
+      const dayMinutes = (weekLogs || [])
         .filter((l) => l.date === dateStr)
         .reduce((sum, l) => sum + l.duration_minutes, 0);
       days.push({ day: dayLabel, minutes: dayMinutes, date: dateStr });
@@ -183,12 +190,12 @@ export default function DashboardPage() {
   const maxDayMinutes = Math.max(...dailyBreakdown.map((d) => d.minutes), 480);
 
   const weekProjectCount = useMemo(() => {
-    const pIds = new Set(weekLogs.map((l) => l.project_id));
+    const pIds = new Set((weekLogs || []).map((l) => l.project_id));
     return pIds.size;
   }, [weekLogs]);
 
   const recentDescriptions = useMemo(() => {
-    const descs = logs
+    const descs = (logs || [])
       .filter((l) => l.user_id === profile?.id)
       .map((l) => l.description)
       .filter((d) => d && d.trim().length > 0);
@@ -200,10 +207,12 @@ export default function DashboardPage() {
       stopTimer();
       addToast('Timer stopped and log saved', 'success');
       setSelectedProject('');
+      setSelectedPhase('');
+      setSelectedTask('');
       setTaskDesc('');
     } else {
       if (!selectedProject) return;
-      startTimer(selectedProject, taskDesc);
+      startTimer(selectedProject, taskDesc, selectedPhase, selectedTask);
       addToast('Timer started', 'success');
     }
   };
@@ -211,7 +220,29 @@ export default function DashboardPage() {
   const handleProjectChange = (e) => {
     const val = e.target.value;
     setSelectedProject(val);
-    if (is_running) setProject(val);
+    setSelectedPhase('');
+    setSelectedTask('');
+    if (is_running) {
+      setProject(val);
+      setPhase('');
+      setTask('');
+    }
+  };
+
+  const handlePhaseChange = (e) => {
+    const val = e.target.value;
+    setSelectedPhase(val);
+    setSelectedTask('');
+    if (is_running) {
+      setPhase(val);
+      setTask('');
+    }
+  };
+
+  const handleTaskChange = (e) => {
+    const val = e.target.value;
+    setSelectedTask(val);
+    if (is_running) setTask(val);
   };
 
   const handleDescChange = (e) => {
@@ -337,20 +368,53 @@ export default function DashboardPage() {
 
           <div className="timer-controls">
             <div className="timer-inputs">
-              <select
-                className="select"
-                value={selectedProject}
-                onChange={handleProjectChange}
-                disabled={is_running}
-                id="timer-project-select"
-              >
-                <option value="">Select a project...</option>
-                {assignedProjects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <div className="timer-dropdowns">
+                <select
+                  className="select"
+                  value={selectedProject}
+                  onChange={handleProjectChange}
+                  disabled={is_running}
+                  id="timer-project-select"
+                >
+                  <option value="">Select a project...</option>
+                  {assignedProjects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="select"
+                  value={is_running ? active_phase_id : selectedPhase}
+                  onChange={handlePhaseChange}
+                  disabled={!selectedProject || is_running}
+                  id="timer-phase-select"
+                >
+                  <option value="">Select a phase (Optional)...</option>
+                  {allProjects.find(p => p.id === selectedProject)?.phases?.map((ph) => (
+                    <option key={ph.id} value={ph.id}>
+                      {ph.name} ({ph.status.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="select"
+                  value={is_running ? active_task_id : selectedTask}
+                  onChange={handleTaskChange}
+                  disabled={!selectedPhase || is_running}
+                  id="timer-task-select"
+                >
+                  <option value="">Select a task (Optional)...</option>
+                  {allProjects.find(p => p.id === selectedProject)?.phases?.find(ph => ph.id === selectedPhase)?.tasks?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.priority.toUpperCase()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
 
               <div className="input-group">
                 <label htmlFor="task-desc">Task Description</label>
@@ -513,7 +577,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {todayLogs.map((log, i) => {
+                {(todayLogs || []).map((log, i) => {
                   const isPastWork = log.description?.startsWith('[M/P]');
                   const isManual = isPastWork || log.description?.startsWith('[M]') || 
                                   (log.date && log.date !== new Date(log.created_at).toISOString().split('T')[0]);

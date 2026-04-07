@@ -14,6 +14,8 @@ export default function ManualLogModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [manualData, setManualData] = useState({
     projectId: '',
+    phaseId: '',
+    taskId: '',
     description: '',
     hours: '0',
     minutes: '0',
@@ -34,6 +36,8 @@ export default function ManualLogModal() {
     
     await addManualLog({
       projectId: manualData.projectId,
+      phaseId: manualData.phaseId,
+      taskId: manualData.taskId,
       description: manualData.description,
       durationMinutes: totalMinutes,
       date: manualData.date,
@@ -45,6 +49,8 @@ export default function ManualLogModal() {
     setShowManualModal(false);
     setManualData({
       projectId: '',
+      phaseId: '',
+      taskId: '',
       description: '',
       hours: '0',
       minutes: '0',
@@ -57,7 +63,7 @@ export default function ManualLogModal() {
 
   return (
     <div className="modal-overlay" onClick={() => setShowManualModal(false)}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
         <div className="modal-header">
           <h3>Log Time Manually</h3>
           <button className="btn btn-ghost btn-icon" onClick={() => setShowManualModal(false)}>
@@ -66,19 +72,53 @@ export default function ManualLogModal() {
         </div>
 
         <form className="modal-form" onSubmit={handleManualSave}>
-          <div className="form-group">
-            <label>Project *</label>
-            <select
-              className="select"
-              value={manualData.projectId}
-              onChange={(e) => setManualData({ ...manualData, projectId: e.target.value })}
-              required
-            >
-              <option value="">Select a project...</option>
-              {assignedProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+          <div className="form-group-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
+            <div>
+              <label>Project *</label>
+              <select
+                className="select"
+                value={manualData.projectId}
+                onChange={(e) => setManualData({ ...manualData, projectId: e.target.value, phaseId: '', taskId: '' })}
+                required
+              >
+                <option value="">Select a project...</option>
+                {assignedProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Phase</label>
+              <select
+                className="select"
+                value={manualData.phaseId}
+                onChange={(e) => setManualData({ ...manualData, phaseId: e.target.value, taskId: '' })}
+                disabled={!manualData.projectId}
+              >
+                <option value="">Select a phase (Optional)...</option>
+                {allProjects.find(p => p.id === manualData.projectId)?.phases?.map((ph) => (
+                  <option key={ph.id} value={ph.id}>
+                    {ph.name} ({ph.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>Task</label>
+              <select
+                className="select"
+                value={manualData.taskId}
+                onChange={(e) => setManualData({ ...manualData, taskId: e.target.value })}
+                disabled={!manualData.phaseId}
+              >
+                <option value="">Select a task (Optional)...</option>
+                {allProjects.find(p => p.id === manualData.projectId)?.phases?.find(ph => ph.id === manualData.phaseId)?.tasks?.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.priority})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="form-group">

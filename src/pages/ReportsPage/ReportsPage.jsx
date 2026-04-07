@@ -87,11 +87,26 @@ export default function ReportsPage() {
 
   const getProjectName = (id) => projects.find((p) => p.id === id)?.name || 'Unknown';
   const getUserName = (id) => companyProfiles.find((u) => u.id === id)?.full_name || 'Unknown';
+  
+  const getPhaseName = (projectId, phaseId) => {
+    if (!phaseId) return '-';
+    const project = projects.find(p => p.id === projectId);
+    return project?.phases?.find(ph => ph.id === phaseId)?.name || 'Unknown Phase';
+  };
+
+  const getTaskName = (projectId, phaseId, taskId) => {
+    if (!taskId) return '-';
+    const project = projects.find(p => p.id === projectId);
+    const phase = project?.phases?.find(ph => ph.id === phaseId);
+    return phase?.tasks?.find(t => t.id === taskId)?.name || 'Unknown Task';
+  };
 
   const exportToCSV = () => {
-    const headers = ['Project', 'Employee', 'Description', 'Date', 'Duration (hours)'];
+    const headers = ['Project', 'Phase', 'Task', 'Employee', 'Description', 'Date', 'Duration (hours)'];
     const rows = filteredLogs.map((log) => [
       getProjectName(log.project_id),
+      getPhaseName(log.project_id, log.phase_id),
+      getTaskName(log.project_id, log.phase_id, log.task_id),
       getUserName(log.user_id),
       log.description?.replace(/,/g, ' '), // Basic CSV escaping
       log.created_at ? new Date(log.created_at).toLocaleDateString() : log.date,
@@ -263,6 +278,8 @@ export default function ReportsPage() {
                 <thead>
                   <tr>
                     <th>Project</th>
+                    <th>Phase</th>
+                    <th>Task</th>
                     <th>Employee</th>
                     <th>Description</th>
                     <th>Date</th>
@@ -285,6 +302,12 @@ export default function ReportsPage() {
                           <span className="badge badge-neutral">
                             {getProjectName(log.project_id)}
                           </span>
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                          {getPhaseName(log.project_id, log.phase_id)}
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                          {getTaskName(log.project_id, log.phase_id, log.task_id)}
                         </td>
                         <td>
                           <div className="report-employee">
@@ -345,6 +368,11 @@ export default function ReportsPage() {
                     </div>
                     <div className="m-report-desc">
                       {cleanDescription}
+                    </div>
+                    <div className="m-report-footer" style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '8px' }}>
+                      <div className="m-hierarchy-context" style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>
+                        {getPhaseName(log.project_id, log.phase_id)} / {getTaskName(log.project_id, log.phase_id, log.task_id)}
+                      </div>
                     </div>
                     <div className="m-report-footer">
                       <div className="report-employee">
