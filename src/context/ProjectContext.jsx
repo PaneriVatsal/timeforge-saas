@@ -10,35 +10,43 @@ export function ProjectProvider({ children }) {
   const { company, profile, user } = useAuth();
 
   const fetchProjects = useCallback(async () => {
-    if (!company) return;
+    if (!company) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
 
-    const { data: projectsData, error } = await supabase
-      .from('projects')
-      .select('*, project_assignments(user_id, role), time_logs(duration_minutes, phase_id, task_id), project_phases(*, tasks(*, sub_tasks(*)))')
-      .eq('company_id', company.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data: projectsData, error } = await supabase
+        .from('projects')
+        .select('*, project_assignments(user_id, role), time_logs(duration_minutes, phase_id, task_id), project_phases(*, tasks(*, sub_tasks(*)))')
+        .eq('company_id', company.id)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching projects:', error);
-    } else {
-      // Map assignments and calculate total hours
-      const mappedProjects = projectsData.map(p => ({
-        ...p,
-        assignments: p.project_assignments || [],
-        assigned_users: (p.project_assignments || []).map(a => a.user_id),
-        phases: (p.project_phases || []).map(ph => ({
-          ...ph,
-          tasks: (ph.tasks || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(t => ({
-            ...t,
-            sub_tasks: (t.sub_tasks || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-          }))
-        })).sort((a, b) => a.order_index - b.order_index),
-        logged_hours: (p.time_logs || []).reduce((sum, log) => sum + (log.duration_minutes || 0), 0) / 60
-      }));
-      setProjects(mappedProjects);
+      if (error) {
+        console.error('Error fetching projects:', error);
+      } else if (projectsData) {
+        // Map assignments and calculate total hours
+        const mappedProjects = projectsData.map(p => ({
+          ...p,
+          assignments: p.project_assignments || [],
+          assigned_users: (p.project_assignments || []).map(a => a.user_id),
+          phases: (p.project_phases || []).map(ph => ({
+            ...ph,
+            tasks: (ph.tasks || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0)).map(t => ({
+              ...t,
+              sub_tasks: (t.sub_tasks || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+            }))
+          })).sort((a, b) => a.order_index - b.order_index),
+          logged_hours: (p.time_logs || []).reduce((sum, log) => sum + (log.duration_minutes || 0), 0) / 60
+        }));
+        setProjects(mappedProjects);
+      }
+    } catch (err) {
+      console.error('Fetch projects exception:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [company]);
 
   useEffect(() => {

@@ -60,21 +60,29 @@ export function TimerProvider({ children }) {
   const { refreshProjects } = useProjects();
 
   const fetchLogs = useCallback(async () => {
-    if (!company) return;
+    if (!company) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
 
-    const { data, error } = await supabase
-      .from('time_logs')
-      .select('*, projects(name)')
-      .eq('company_id', company.id)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('time_logs')
+        .select('*, projects(name)')
+        .eq('company_id', company.id)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching logs:', error);
-    } else {
-      setLogs(data);
+      if (error) {
+        console.error('Error fetching logs:', error);
+      } else {
+        setLogs(data || []);
+      }
+    } catch (err) {
+      console.error('Fetch logs exception:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [company]);
 
   useEffect(() => {
