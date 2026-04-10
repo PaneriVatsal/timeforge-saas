@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { validate, authSchema, stripBasicHTML } from '../lib/validation';
 
 const AuthContext = createContext(null);
 
@@ -125,11 +126,50 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // 0. Rate Limiting Utility
+  const checkRateLimit = useCallback((type = 'auth') => {
+    try {
+      const KEY = `rate_limit_${type}`;
+      const DATA = JSON.parse(localStorage.getItem(KEY) || '{"attempts": [], "blockedUntil": 0}');
+      const NOW = Date.now();
+      const WINDOW = 15 * 60 * 1000; // 15 mins
+      const MAX_ATTEMPTS = 5;
+
+      if (DATA.blockedUntil > NOW) {
+        const remaining = Math.ceil((DATA.blockedUntil - NOW) / 1000 / 60);
+        throw new Error(`Too many attempts. Blocked for ${remaining} more minutes.`);
+      }
+
+      // Filter attempts in window
+      DATA.attempts = DATA.attempts.filter(a => (NOW - a) < WINDOW);
+      
+      if (DATA.attempts.length >= MAX_ATTEMPTS) {
+        DATA.blockedUntil = NOW + WINDOW;
+        localStorage.setItem(KEY, JSON.stringify(DATA));
+        throw new Error('Too many attempts. You are blocked for 15 minutes.');
+      }
+
+      // Add current attempt and save
+      DATA.attempts.push(NOW);
+      localStorage.setItem(KEY, JSON.stringify(DATA));
+      return true;
+    } catch (err) {
+      throw err;
+    }
+  }, []);
+
   const login = useCallback(async (email, password) => {
     dispatch({ type: 'LOGIN_START' });
     try {
-      console.log('[Auth] Attempting login for:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      // 1. Rate Limiting
+      checkRateLimit('login');
+
+      // 2. Validation & Sanitization
+      const cleanEmail = stripBasicHTML(email);
+      validate(authSchema, { email: cleanEmail, password });
+
+      console.log('[Auth] Attempting login for:', cleanEmail);
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       
       if (error) {
         console.error('[Auth] Login failed:', error.message);
@@ -142,10 +182,10 @@ export function AuthProvider({ children }) {
       return { success: true };
     } catch (err) {
       console.error('[Auth] Login exception:', err);
-      dispatch({ type: 'LOGIN_FAILURE', payload: 'Connection error' });
-      return { success: false, message: 'Connection error: ' + err.message };
+      dispatch({ type: 'LOGIN_FAILURE', payload: err.message || 'Connection error' });
+      return { success: false, message: err.message || 'Connection error' };
     }
-  }, [loadUserData]);
+  }, [loadUserData, checkRateLimit]);
 
   const signInWithSocial = useCallback(async (provider) => {
     try {
@@ -164,13 +204,23 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (email, password, fullName, companyName = '') => {
     try {
-      console.log('[Auth] Starting registration for:', email);
+      // 1. Rate Limiting
+      checkRateLimit('register');
+
+      // 2. Validation & Sanitization
+      const cleanEmail = stripBasicHTML(email);
+      const cleanFullName = stripBasicHTML(fullName);
+      const cleanCompanyName = stripBasicHTML(companyName);
+      
+      validate(authSchema, { email: cleanEmail, password, fullName: cleanFullName });
+
+      console.log('[Auth] Starting registration for:', cleanEmail);
       
       // Step 1: Create auth account
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
-        options: { data: { full_name: fullName, company_name: companyName } },
+        options: { data: { full_name: cleanFullName, company_name: cleanCompanyName } },
       });
       
       if (error) {

@@ -614,6 +614,10 @@
   box-shadow: 0 0 0 4px rgba(var(--color-accent-rgb), 0.1);
 }
 
+[data-theme="dark"] .panel-search .input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .team-list, .available-list {
   display: flex;
   flex-direction: column;
@@ -671,9 +675,12 @@
 
 .role-select {
   padding: 4px 8px;
+  padding-right: 28px; /* Space for chevron */
   font-size: 12px;
   border-radius: var(--radius-sm);
-  background: var(--color-bg-card);
+  background-color: var(--color-bg-card);
+  background-repeat: no-repeat;
+  background-position: right 8px center;
 }
 
 .assign-controls {

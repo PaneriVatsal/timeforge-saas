@@ -153,7 +153,15 @@
 
 /* Dark mode select arrow */
 [data-theme="dark"] .select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23e5e7eb' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-color: var(--color-surface-elevated);
+  color: var(--color-text);
+}
+
+/* Fix for native select options in dark mode */
+[data-theme="dark"] select option {
+  background-color: hsl(222, 28%, 18%);
+  color: #ffffff;
 }
 
 /* Dark mode input disabled */

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProjects } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
@@ -39,7 +39,7 @@ export default function ProjectDetailPage() {
     if (currentProfile?.role === 'Admin') return true;
     const assignment = project.assignments?.find(a => a.user_id === user?.id);
     return ['Project Manager', 'PMO', 'Project Lead'].includes(assignment?.role);
-  }, [project, user, currentProfile]);
+  }, [project?.assignments, user?.id, currentProfile?.role, project?.id]);
 
   const [editData, setEditData] = useState({
     name: '',
@@ -57,7 +57,7 @@ export default function ProjectDetailPage() {
         status: project.status || 'active'
       });
     }
-  }, [project]);
+  }, [project?.name, project?.client, project?.budgeted_hours, project?.status]);
 
   const phaseStats = useMemo(() => {
     if (!project || !project.time_logs || !project.phases) return [];
@@ -76,7 +76,7 @@ export default function ProjectDetailPage() {
         progress
       };
     });
-  }, [project]);
+  }, [project?.phases, project?.time_logs, project?.id]);
 
   const assignedTeam = useMemo(() => {
     if (!project?.assignments) return [];
@@ -85,7 +85,7 @@ export default function ProjectDetailPage() {
       if (!u) return null;
       return { ...u, projectRole: a.role || 'Team Member' };
     }).filter(Boolean);
-  }, [project?.assignments, companyProfiles]);
+  }, [project?.assignments, companyProfiles, project?.id]);
 
   const availableUsers = useMemo(() => {
     if (!project) return [];
@@ -95,41 +95,16 @@ export default function ProjectDetailPage() {
         (u.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           u.email?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-  }, [companyProfiles, project, searchQuery]);
+  }, [companyProfiles, project?.assigned_users, searchQuery, project?.id]);
 
   const getBudgetPct = (p) => {
     if (!p) return 0;
     return p.budgeted_hours ? Math.min(100, Math.round((p.logged_hours / p.budgeted_hours) * 100)) : 0;
   };
 
-  // 1. Loading handle
-  if (isLoading) {
-    return (
-      <div className="center-page">
-        <Loader2 className="spin" size={32} />
-      </div>
-    );
-  }
-
-  // 2. Not found handle
-  if (!project) {
-    return (
-      <div className="project-detail-page">
-        <div className="empty-state container animate-fade-in">
-          <Target size={48} className="text-muted" style={{ marginBottom: 'var(--space-4)' }} />
-          <h2>Project not found</h2>
-          <p>This project might have been moved or deleted.</p>
-          <button className="btn btn-accent" onClick={() => navigate('/projects')}>
-            <ArrowLeft size={16} /> Back to Projects
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const budgetPct = getBudgetPct(project);
-
-  const celebrateCompletion = () => {
+  
+  const celebrateCompletion = useCallback(() => {
     const duration = 1.5;
     const count = 50;
     const container = document.querySelector('.project-detail-page');
@@ -159,18 +134,44 @@ export default function ProjectDetailPage() {
         onComplete: () => p.remove()
       });
     }
-  };
+  }, []);
 
-  const togglePhaseExpansion = (phaseId) => {
+  const togglePhaseExpansion = useCallback((phaseId) => {
     setExpandedPhases(prev => ({ ...prev, [phaseId]: !prev[phaseId] }));
-  };
+  }, []);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (!project) return;
     await updateProject(project.id, editData);
     setShowEditModal(false);
     addToast('Project updated successfully', 'success');
   };
+
+  // 1. Loading handle
+  if (isLoading) {
+    return (
+      <div className="center-page">
+        <Loader2 className="spin" size={32} />
+      </div>
+    );
+  }
+
+  // 2. Not found handle
+  if (!project) {
+    return (
+      <div className="project-detail-page">
+        <div className="empty-state container animate-fade-in">
+          <Target size={48} className="text-muted" style={{ marginBottom: 'var(--space-4)' }} />
+          <h2>Project not found</h2>
+          <p>This project might have been moved or deleted.</p>
+          <button className="btn btn-accent" onClick={() => navigate('/projects')}>
+            <ArrowLeft size={16} /> Back to Projects
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="project-detail-page">
